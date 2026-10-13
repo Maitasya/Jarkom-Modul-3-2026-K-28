@@ -378,3 +378,474 @@ Script dijalankan melalui console masing-masing perangkat dengan urutan berikut:
 1. **Tengen:** jalankan `/root/soal6-server.sh` untuk memvalidasi konfigurasi dan memastikan DHCP server aktif.
 2. **Jichi:** jalankan `/root/soal6-relay.sh` untuk memeriksa serta memastikan DHCP relay aktif.
 3. **Kugisaki:** jalankan `/root/soal6-client.sh` untuk meminta IP reservasi dan memverifikasi alamat IP serta gateway.
+
+---
+### Soal 7
+## Konfigurasi DHCP Server dan DHCP Relay
+
+Konfigurasikan DHCP server pada Tengen untuk membagikan alamat IP kepada client Divisi A dan Divisi B melalui DHCP relay pada Jichi. Atur rentang IP, gateway, DNS, domain pencarian, serta static lease untuk Kugisaki dengan IP `192.225.3.99`. Lakukan pengujian untuk memastikan delapan client memperoleh IP sesuai subnet dan konfigurasi jaringan yang ditentukan.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memeriksa IP dan Routing Tengen
+
+**Console perangkat: Tengen**
+
+Jalankan perintah berikut:
+
+```bash
+ip -br addr
+ip route
+```
+
+**Hasil yang diharapkan:** interface `eth0` memiliki IP `192.225.4.10/24` dan default gateway `192.225.4.1`.
+
+**SS 7-01 — IP dan Routing Tengen**
+
+<img width="959" height="108" alt="IP Tengen dan routing soal7" src="https://github.com/user-attachments/assets/a6cdd139-7688-47d3-86e4-513987ecaa42" />
+
+#### Langkah 2 — Memeriksa Konfigurasi DHCP Server
+
+**Console perangkat: Tengen**
+
+Periksa konfigurasi DHCP menggunakan perintah:
+
+```bash
+cat /etc/dhcp/dhcpd.conf
+```
+
+**Hasil yang diharapkan:** konfigurasi mencakup subnet Divisi A dan B, rentang IP dinamis, gateway, DNS `192.225.1.2` dan `192.225.1.3`, serta static lease Kugisaki dengan IP `192.225.3.99`.
+
+**SS 7-02 — Konfigurasi DHCP Server**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/345b6909-c084-4e61-ad88-f5f46f2b6b3e" />
+
+#### Langkah 3 — Memvalidasi dan Memeriksa Status DHCP Server
+
+**Console perangkat: Tengen**
+
+Validasi konfigurasi:
+
+```bash
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
+```
+
+Periksa status layanan:
+
+```bash
+service isc-dhcp-server status
+```
+
+**Hasil yang diharapkan:** konfigurasi valid dan layanan DHCP server berstatus berjalan.
+
+**SS 7-03 — Validasi dan Status DHCP Server**
+
+<img width="960" height="516" alt="Konfigurasi DHCP server soal7" src="https://github.com/user-attachments/assets/bdc0908b-0080-4e42-9769-eb1d2398b1aa" />
+
+
+#### Langkah 4 — Memeriksa DHCP Relay
+
+**Console perangkat: Jichi**
+
+Periksa proses DHCP relay:
+
+```bash
+ps aux | grep '[d]hcrelay'
+```
+
+Jika belum ada proses relay, jalankan:
+
+```bash
+dhcrelay -d -i eth2 -i eth3 -i eth4 192.225.4.10
+```
+
+Biarkan terminal tetap terbuka selama pengujian client.
+
+**Hasil yang diharapkan:** DHCP relay berjalan dan meneruskan permintaan client menuju server Tengen `192.225.4.10`.
+
+**SS 7-04 — DHCP Relay pada Jichi**
+
+<img width="960" height="516" alt="DHCP relay di Jichi soal 7" src="https://github.com/user-attachments/assets/79912c3c-3505-4062-91af-6c9dd475e121" />
+
+#### Langkah 5 — Menguji Pemberian IP pada Client
+
+**Console perangkat:** Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusakabe, Miwa, dan Kugisaki.
+
+Jalankan perintah berikut pada setiap client:
+
+```bash
+udhcpc -i eth0 -n -q
+```
+
+**Hasil aktual yang diperoleh:**
+
+| Client | IP yang diperoleh |
+|---|---|
+| Itadori | `192.225.2.12` |
+| Fushiguro | `192.225.2.11` |
+| Zenin | `192.225.2.13` |
+| Okkotsu | `192.225.2.10` |
+| Ino | `192.225.3.13` |
+| Kusakabe | `192.225.3.12` |
+| Miwa | `192.225.3.11` |
+| Kugisaki | `192.225.3.99` |
+
+**Hasil yang diharapkan:** seluruh client memperoleh IP sesuai subnetnya dari DHCP server Tengen. Kugisaki memperoleh IP reservasi `192.225.3.99`.
+
+**Screenshot dan keterangannya:**
+
+- **SS 7-05 — DHCP Client Divisi A.** Tampilkan hasil pemberian IP Itadori, Fushiguro, Zenin, dan Okkotsu.
+  
+  1. Itadori
+     
+<img width="960" height="516" alt="Itadori soal 7" src="https://github.com/user-attachments/assets/57b91fcd-c48b-4a32-b2c3-9a3d6f3311c0" />
+
+  3. Fushiguro
+     
+<img width="960" height="516" alt="Fushiguro soal7" src="https://github.com/user-attachments/assets/3c40b0f1-e03e-441c-b329-7ba859af2814" />
+
+  4. Zenin
+     
+<img width="960" height="516" alt="Zenin soal7" src="https://github.com/user-attachments/assets/245203ea-083e-4015-9e65-da187ffd07e7" />
+
+  5. Okkotsu
+     
+<img width="960" height="516" alt="okkotsu soal 7" src="https://github.com/user-attachments/assets/feda94a6-2112-4bd2-a616-8b38bba82ace" />
+
+- **SS 7-06 — DHCP Client Divisi B.** Tampilkan hasil pemberian IP Ino, Kusakabe, Miwa, dan Kugisaki.
+  
+  1. Ino
+     
+<img width="960" height="516" alt="Ino  soal7" src="https://github.com/user-attachments/assets/ac41a2fb-90c3-49e4-bc14-8eb77b1821b4" />
+
+  3. Kusakabe
+     
+<img width="960" height="516" alt="Kusakabe soal7" src="https://github.com/user-attachments/assets/7c380883-f202-47c5-8567-f613e7faf33b" />
+
+  4. Miwa
+     
+<img width="960" height="516" alt="Miwa soal 7" src="https://github.com/user-attachments/assets/38e811f5-e4f5-446d-a311-0db1da4ce746" />
+
+  5. Kugisaki
+     
+<img width="960" height="516" alt="Kugisaki soal7" src="https://github.com/user-attachments/assets/fc71a7a1-b43c-4693-bf1c-fcfc55c17240" />
+
+
+#### Langkah 6 — Memverifikasi Gateway, DNS, dan Domain Pencarian
+
+**Console perangkat: Okkotsu**
+
+Periksa routing dan alamat IP:
+
+```bash
+ip route
+ip -br addr
+```
+
+Periksa DNS dan domain pencarian:
+
+```bash
+cat /etc/resolv.conf
+```
+
+**Hasil aktual yang diperoleh:** Okkotsu menggunakan IP `192.225.2.10/24`, gateway `192.225.2.1`, domain pencarian `K28.com`, serta DNS `192.225.1.2` dan `192.225.1.3`.
+
+**SS 7-07 — Verifikasi Gateway, DNS, dan Domain Pencarian**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/42d1b8cd-0d36-4c14-831d-0dc9f72a942d" />
+
+#### Langkah 7 — Menguji Konektivitas Gateway
+
+**Console perangkat: Kugisaki**
+
+Jalankan perintah berikut:
+
+```bash
+ping -c 4 192.225.3.1
+```
+
+**Hasil aktual yang diperoleh:**
+
+```text
+4 packets transmitted, 4 received, 0% packet loss
+```
+
+**Hasil yang diharapkan:** seluruh paket berhasil diterima dari gateway Jichi `192.225.3.1`.
+
+**SS 7-08 — Pengujian Konektivitas Gateway**
+
+<img width="960" height="516" alt="Ping gateway berhasil soal 7" src="https://github.com/user-attachments/assets/5d5e0831-df6e-4d39-83b3-6f7a053fde92" />
+
+### Catatan Pengujian Ulang
+
+Perintah pemeriksaan konfigurasi, status layanan, alamat IP, routing, dan DNS dapat dijalankan berulang kali. Sebelum menjalankan DHCP relay, periksa prosesnya menggunakan `ps aux | grep '[d]hcrelay'` dan jangan menjalankan relay baru jika proses sebelumnya masih aktif. Jika DHCP server belum berjalan, periksa validitas konfigurasi terlebih dahulu sebelum menjalankan `service isc-dhcp-server start`, lalu ulangi pengujian client setelah relay aktif.
+
+### Kesimpulan
+
+Konfigurasi DHCP server pada Tengen dan DHCP relay pada Jichi berhasil diterapkan sehingga delapan client memperoleh alamat IP sesuai subnet masing-masing. Static lease Kugisaki berhasil memberikan IP `192.225.3.99`, sedangkan pemeriksaan Okkotsu menunjukkan konfigurasi gateway, subnet mask, DNS, dan domain pencarian sesuai hasil yang diharapkan. Pengujian konektivitas Kugisaki ke gateway berhasil dengan `0% packet loss`.
+
+### Otomatisasi Pengujian DHCP Server dan DHCP Relay Menggunakan Script
+
+#### Script DHCP Server pada Tengen
+
+**Cara membuat script**
+
+Pada console Tengen, buat file `/root/soal7-server.sh` menggunakan perintah:
+
+```bash
+cat > /root/soal7-server.sh <<'EOF'
+#!/bin/bash
+
+echo "=================================="
+echo " DEMO SOAL 7 - DHCP SERVER TENGEN"
+echo "=================================="
+
+CONFIG="/etc/dhcp/dhcpd.conf"
+
+if [ ! -f "$CONFIG" ]; then
+    echo "ERROR: File konfigurasi DHCP tidak ditemukan."
+    exit 1
+fi
+
+echo
+echo "[1] Memeriksa konfigurasi DHCP:"
+if ! dhcpd -t -cf "$CONFIG"; then
+    echo "ERROR: Konfigurasi DHCP tidak valid."
+    exit 1
+fi
+
+echo
+echo "[2] Memastikan DHCP server berjalan:"
+service isc-dhcp-server start
+
+echo
+echo "[3] Status DHCP server:"
+service isc-dhcp-server status
+
+echo
+echo "Pemeriksaan Tengen selesai."
+EOF
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal7-server.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+/root/soal7-server.sh
+```
+
+**Fungsi:** memeriksa keberadaan file konfigurasi DHCP, memvalidasi konfigurasi menggunakan `dhcpd -t`, memastikan layanan DHCP server berjalan, dan menampilkan status layanan.
+
+#### Script DHCP Relay pada Jichi
+
+**Cara membuat script**
+
+Pada console Jichi, buat file `/root/soal7-relay.sh` menggunakan perintah:
+
+```bash
+cat > /root/soal7-relay.sh <<'EOF'
+#!/bin/bash
+
+echo "================================"
+echo " DEMO SOAL 7 - DHCP RELAY JICHI"
+echo "================================"
+
+SERVER="192.225.4.10"
+
+echo
+echo "[1] Memeriksa DHCP relay:"
+if pgrep -x dhcrelay >/dev/null; then
+    echo "DHCP relay sudah berjalan."
+    echo "Tidak menjalankan proses relay baru."
+    ps aux | grep '[d]hcrelay'
+else
+    echo
+    echo "[2] Menjalankan DHCP relay:"
+    echo "Interface: eth2, eth3, eth4"
+    echo "DHCP Server: $SERVER"
+    echo "Relay berjalan di foreground."
+    echo "Tekan Ctrl+C untuk menghentikannya."
+
+    exec dhcrelay -d -i eth2 -i eth3 -i eth4 "$SERVER"
+fi
+
+echo
+echo "Pemeriksaan Jichi selesai."
+EOF
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal7-relay.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+/root/soal7-relay.sh
+```
+
+**Fungsi:** memeriksa proses DHCP relay pada Jichi dan menjalankannya jika belum aktif. Relay menggunakan interface `eth2`, `eth3`, dan `eth4` agar permintaan DHCP dari Divisi A dan Divisi B dapat diteruskan ke server Tengen melalui `192.225.4.10`. Relay berjalan di foreground sehingga pesan proses dapat diamati selama pengujian.
+
+#### Script Pengujian DHCP Client pada Divisi A dan Divisi B
+
+**Cara membuat script**
+
+Pada console masing-masing klien, buat file `/root/soal7-client.sh` menggunakan perintah:
+
+```bash
+cat > /root/soal7-client.sh <<'EOF'
+#!/bin/bash
+
+echo "=================================="
+echo " DEMO SOAL 7 - DHCP CLIENT"
+echo "=================================="
+
+INTERFACE="eth0"
+
+echo
+echo "[1] Meminta alamat IP dari DHCP:"
+if ! udhcpc -i "$INTERFACE" -n -q; then
+    echo "ERROR: Gagal memperoleh lease DHCP."
+    echo "Periksa DHCP server Tengen dan relay Jichi."
+    exit 1
+fi
+
+echo
+echo "[2] Alamat IP client:"
+ip -4 -br addr show "$INTERFACE"
+
+CURRENT_IP=$(ip -4 -o addr show "$INTERFACE" | awk '{print $4}' | cut -d/ -f1)
+
+case "$CURRENT_IP" in
+    192.225.2.*)
+        EXPECTED_GATEWAY="192.225.2.1"
+        ;;
+    192.225.3.*)
+        EXPECTED_GATEWAY="192.225.3.1"
+        ;;
+    *)
+        echo "ERROR: IP berada di luar subnet Divisi A dan Divisi B."
+        echo "IP yang diperoleh: $CURRENT_IP"
+        exit 1
+        ;;
+esac
+
+echo
+echo "[3] Routing client:"
+ip route
+
+CURRENT_GATEWAY=$(ip route | awk '$1 == "default" {print $3; exit}')
+
+if [ "$CURRENT_GATEWAY" != "$EXPECTED_GATEWAY" ]; then
+    echo "ERROR: Gateway tidak sesuai."
+    echo "Gateway yang diharapkan: $EXPECTED_GATEWAY"
+    echo "Gateway yang ditemukan: ${CURRENT_GATEWAY:-tidak ditemukan}"
+    exit 1
+fi
+
+echo
+echo "[4] Informasi DNS:"
+cat /etc/resolv.conf
+
+echo
+echo "[5] Menguji koneksi ke gateway:"
+if ! ping -c 4 "$EXPECTED_GATEWAY"; then
+    echo "ERROR: Koneksi ke gateway gagal."
+    exit 1
+fi
+
+echo
+echo "BERHASIL: IP, gateway, dan koneksi gateway berhasil diperiksa."
+EOF
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal7-client.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+/root/soal7-client.sh
+```
+
+Jalankan script pada setiap klien: Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusakabe, Miwa, dan Kugisaki.
+
+**Fungsi:** meminta alamat IP melalui DHCP, menampilkan alamat IP dan routing, memeriksa kesesuaian gateway berdasarkan subnet klien, menampilkan konfigurasi DNS, serta menguji koneksi ke gateway menggunakan `ping`.
+
+#### Script Verifikasi DHCP Server pada Tengen
+
+**Cara membuat script**
+
+Pada console Tengen, buat file `/root/soal7-cek-server.sh` menggunakan perintah:
+
+```bash
+cat > /root/soal7-cek-server.sh <<'EOF'
+#!/bin/bash
+
+echo "===================================="
+echo " DEMO SOAL 7 - VERIFIKASI TENGEN"
+echo "===================================="
+
+echo
+echo "[1] Alamat IP server:"
+ip -br addr
+
+echo
+echo "[2] Routing server:"
+ip route
+
+echo
+echo "[3] Daftar lease DHCP:"
+LEASE="/var/lib/dhcp/dhcpd.leases"
+
+if [ -f "$LEASE" ]; then
+    cat "$LEASE"
+else
+    echo "File lease belum tersedia."
+fi
+
+echo
+echo "[4] Status DHCP server:"
+service isc-dhcp-server status
+
+echo
+echo "Verifikasi Tengen selesai."
+EOF
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal7-cek-server.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+/root/soal7-cek-server.sh
+```
+
+**Fungsi:** menampilkan alamat IP server, routing, daftar lease yang tercatat, dan status layanan DHCP server untuk membantu verifikasi hasil pengujian.
+
+#### Urutan Menjalankan Script untuk Demonstrasi
+
+Script dijalankan melalui console masing-masing perangkat dengan urutan berikut:
+
+1. **Tengen:** jalankan `/root/soal7-server.sh` untuk memvalidasi konfigurasi dan memastikan DHCP server aktif.
+2. **Jichi:** jalankan `/root/soal7-relay.sh` untuk memastikan DHCP relay berjalan. Biarkan terminal tetap terbuka selama pengujian.
+3. **Klien Divisi A dan Divisi B:** jalankan `/root/soal7-client.sh` pada setiap klien untuk meminta alamat IP, memeriksa gateway, dan menguji koneksi.
+4. **Tengen:** jalankan `/root/soal7-cek-server.sh` untuk memeriksa lease yang tercatat pada DHCP server.
+
+Script ini dijalankan pada perangkat masing-masing, bukan seluruhnya dari satu console. Jika DHCP relay sudah berjalan, script tidak membuat proses relay baru. Untuk menghindari gangguan, jangan menghentikan relay selama pengujian klien berlangsung.
+
+---
