@@ -194,7 +194,6 @@ Konfigurasi DHCP Static Lease untuk Kugisaki berhasil dilakukan berdasarkan MAC 
 Pada console Tengen, buat file `/root/soal6-server.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal6-server.sh <<'EOF'
 #!/bin/bash
 
 echo "=================================="
@@ -234,7 +233,6 @@ service isc-dhcp-server status
 
 echo
 echo "Pemeriksaan Tengen selesai."
-EOF
 ```
 
 Berikan izin eksekusi:
@@ -258,7 +256,6 @@ chmod +x /root/soal6-server.sh
 Pada console Jichi, buat file `/root/soal6-relay.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal6-relay.sh <<'EOF'
 #!/bin/bash
 
 echo "================================"
@@ -283,7 +280,6 @@ ps aux | grep '[d]hcrelay'
 
 echo
 echo "Pemeriksaan Jichi selesai."
-EOF
 ```
 
 Berikan izin eksekusi:
@@ -307,7 +303,6 @@ chmod +x /root/soal6-relay.sh
 Pada console Kugisaki, buat file `/root/soal6-client.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal6-client.sh <<'EOF'
 #!/bin/bash
 
 echo "=================================="
@@ -360,7 +355,6 @@ fi
 
 echo
 echo "BERHASIL: IP reservasi dan gateway sesuai."
-EOF
 ```
 
 Berikan izin eksekusi:
