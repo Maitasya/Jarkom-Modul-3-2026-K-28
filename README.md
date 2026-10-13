@@ -500,15 +500,15 @@ udhcpc -i eth0 -n -q
      
 <img width="960" height="516" alt="Itadori soal 7" src="https://github.com/user-attachments/assets/57b91fcd-c48b-4a32-b2c3-9a3d6f3311c0" />
 
-  3. Fushiguro
+  2. Fushiguro
      
 <img width="960" height="516" alt="Fushiguro soal7" src="https://github.com/user-attachments/assets/3c40b0f1-e03e-441c-b329-7ba859af2814" />
 
-  4. Zenin
+  3. Zenin
      
 <img width="960" height="516" alt="Zenin soal7" src="https://github.com/user-attachments/assets/245203ea-083e-4015-9e65-da187ffd07e7" />
 
-  5. Okkotsu
+  4. Okkotsu
      
 <img width="960" height="516" alt="okkotsu soal 7" src="https://github.com/user-attachments/assets/feda94a6-2112-4bd2-a616-8b38bba82ace" />
 
@@ -518,15 +518,15 @@ udhcpc -i eth0 -n -q
      
 <img width="960" height="516" alt="Ino  soal7" src="https://github.com/user-attachments/assets/ac41a2fb-90c3-49e4-bc14-8eb77b1821b4" />
 
-  3. Kusakabe
+  2. Kusakabe
      
 <img width="960" height="516" alt="Kusakabe soal7" src="https://github.com/user-attachments/assets/7c380883-f202-47c5-8567-f613e7faf33b" />
 
-  4. Miwa
+  3. Miwa
      
 <img width="960" height="516" alt="Miwa soal 7" src="https://github.com/user-attachments/assets/38e811f5-e4f5-446d-a311-0db1da4ce746" />
 
-  5. Kugisaki
+  4. Kugisaki
      
 <img width="960" height="516" alt="Kugisaki soal7" src="https://github.com/user-attachments/assets/fc71a7a1-b43c-4693-bf1c-fcfc55c17240" />
 
@@ -593,7 +593,6 @@ Konfigurasi DHCP server pada Tengen dan DHCP relay pada Jichi berhasil diterapka
 Pada console Tengen, buat file `/root/soal7-server.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal7-server.sh <<'EOF'
 #!/bin/bash
 
 echo "=================================="
@@ -624,7 +623,6 @@ service isc-dhcp-server status
 
 echo
 echo "Pemeriksaan Tengen selesai."
-EOF
 ```
 
 Berikan izin eksekusi:
@@ -648,7 +646,6 @@ chmod +x /root/soal7-server.sh
 Pada console Jichi, buat file `/root/soal7-relay.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal7-relay.sh <<'EOF'
 #!/bin/bash
 
 echo "================================"
@@ -676,7 +673,6 @@ fi
 
 echo
 echo "Pemeriksaan Jichi selesai."
-EOF
 ```
 
 Berikan izin eksekusi:
@@ -700,7 +696,6 @@ chmod +x /root/soal7-relay.sh
 Pada console masing-masing klien, buat file `/root/soal7-client.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal7-client.sh <<'EOF'
 #!/bin/bash
 
 echo "=================================="
@@ -763,7 +758,7 @@ fi
 
 echo
 echo "BERHASIL: IP, gateway, dan koneksi gateway berhasil diperiksa."
-EOF
+
 ```
 
 Berikan izin eksekusi:
@@ -789,7 +784,6 @@ Jalankan script pada setiap klien: Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusa
 Pada console Tengen, buat file `/root/soal7-cek-server.sh` menggunakan perintah:
 
 ```bash
-cat > /root/soal7-cek-server.sh <<'EOF'
 #!/bin/bash
 
 echo "===================================="
@@ -820,7 +814,6 @@ service isc-dhcp-server status
 
 echo
 echo "Verifikasi Tengen selesai."
-EOF
 ```
 
 Berikan izin eksekusi:
