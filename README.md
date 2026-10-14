@@ -915,7 +915,6 @@ Instruksi tersebut menandakan bahwa client harus segera meminta lease baru agar 
 
 **SS 8-03 — Packet Capture Siap pada Tengen**
 
-<img width="960" height="516" alt="Soal8 SS 8-04 (Tengen)" src="https://github.com/user-attachments/assets/af40e61c-c324-453d-984f-5a260eabeae4" />
 
 ### Langkah 4 — Meminta Lease Baru dari Itadori
 
@@ -963,6 +962,8 @@ Capture menunjukkan urutan DHCPDISCOVER, DHCPOFFER, DHCPREQUEST, dan DHCPACK. Ke
 
 **SS 8-05 — Urutan Paket DHCP**
 
+<img width="960" height="516" alt="soal8 Bukti mentah dari file capture" src="https://github.com/user-attachments/assets/820d6434-6770-4aea-9ffa-0380a278297b" />
+
 ### Langkah 6 — Mengidentifikasi Field Penting
 
 **Konsol perangkat: Tengen**
@@ -990,6 +991,8 @@ Nilai `giaddr` `192.225.2.1` sesuai dengan interface `eth2` pada Jichi yang terh
 
 **SS 8-06 — Ringkasan Field DHCP dan Verifikasi giaddr**
 
+<img width="960" height="516" alt="Soal8 SS 8-04 (Tengen)" src="https://github.com/user-attachments/assets/af40e61c-c324-453d-984f-5a260eabeae4" />
+
 ### Langkah 7 — Memeriksa File Packet Capture
 
 **Konsol perangkat: Tengen**
@@ -1004,7 +1007,6 @@ Perintah ini membaca file `/root/soal8.pcap` dan menampilkan pesan DHCP beserta 
 
 **SS 8-07 — Verifikasi File Packet Capture**
 
-<img width="960" height="516" alt="soal8 Bukti mentah dari file capture" src="https://github.com/user-attachments/assets/820d6434-6770-4aea-9ffa-0380a278297b" />
 
 ## Otomatisasi Pengujian Packet Capture DHCP Menggunakan Script
 
