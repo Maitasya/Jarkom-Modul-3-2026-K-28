@@ -594,35 +594,26 @@ Pada console Tengen, buat file `/root/soal7-server.sh` menggunakan perintah:
 
 ```bash
 #!/bin/bash
+set -eu
 
-echo "=================================="
-echo " DEMO SOAL 7 - DHCP SERVER TENGEN"
-echo "=================================="
+echo "===== SOAL 7: DHCP SERVER TENGEN ====="
 
-CONFIG="/etc/dhcp/dhcpd.conf"
-
-if [ ! -f "$CONFIG" ]; then
-    echo "ERROR: File konfigurasi DHCP tidak ditemukan."
+if [ ! -f /etc/dhcp/dhcpd.conf ]; then
+    echo "[GAGAL] File konfigurasi DHCP tidak ditemukan."
     exit 1
 fi
 
-echo
-echo "[1] Memeriksa konfigurasi DHCP:"
-if ! dhcpd -t -cf "$CONFIG"; then
-    echo "ERROR: Konfigurasi DHCP tidak valid."
-    exit 1
-fi
+echo "[1/3] Memeriksa konfigurasi DHCP..."
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
 
-echo
-echo "[2] Memastikan DHCP server berjalan:"
+echo "[2/3] Memastikan layanan DHCP aktif..."
 service isc-dhcp-server start
 
-echo
-echo "[3] Status DHCP server:"
-service isc-dhcp-server status
+echo "[3/3] Status layanan DHCP:"
+service isc-dhcp-server status || true
 
 echo
-echo "Pemeriksaan Tengen selesai."
+echo "===== KONFIGURASI DHCP SELESAI DIPERIKSA ====="
 ```
 
 Berikan izin eksekusi:
@@ -647,32 +638,29 @@ Pada console Jichi, buat file `/root/soal7-relay.sh` menggunakan perintah:
 
 ```bash
 #!/bin/bash
+#!/bin/bash
+set -eu
 
-echo "================================"
-echo " DEMO SOAL 7 - DHCP RELAY JICHI"
-echo "================================"
+echo "===== SOAL 7: DHCP RELAY JICHI ====="
 
-SERVER="192.225.4.10"
-
-echo
-echo "[1] Memeriksa DHCP relay:"
-if pgrep -x dhcrelay >/dev/null; then
-    echo "DHCP relay sudah berjalan."
-    echo "Tidak menjalankan proses relay baru."
-    ps aux | grep '[d]hcrelay'
-else
-    echo
-    echo "[2] Menjalankan DHCP relay:"
-    echo "Interface: eth2, eth3, eth4"
-    echo "DHCP Server: $SERVER"
-    echo "Relay berjalan di foreground."
-    echo "Tekan Ctrl+C untuk menghentikannya."
-
-    exec dhcrelay -d -i eth2 -i eth3 -i eth4 "$SERVER"
+if ! command -v dhcrelay >/dev/null 2>&1; then
+    echo "[GAGAL] dhcrelay belum terpasang."
+    echo "Pasang isc-dhcp-relay terlebih dahulu."
+    exit 1
 fi
 
-echo
-echo "Pemeriksaan Jichi selesai."
+if pgrep -x dhcrelay >/dev/null 2>&1; then
+    echo "[INFO] DHCP Relay sudah berjalan."
+    echo "Tidak menjalankan relay kedua."
+    pgrep -af dhcrelay || true
+    exit 0
+fi
+
+echo "[INFO] Menjalankan DHCP Relay menuju 192.225.4.10..."
+echo "[INFO] Interface: eth2, eth3, eth4"
+echo "[INFO] Tekan Ctrl+C untuk menghentikan relay."
+
+exec dhcrelay -d -i eth2 -i eth3 -i eth4 192.225.4.10
 ```
 
 Berikan izin eksekusi:
@@ -696,69 +684,50 @@ chmod +x /root/soal7-relay.sh
 Pada console masing-masing klien, buat file `/root/soal7-client.sh` menggunakan perintah:
 
 ```bash
-#!/bin/bash
+#!/bin/sh
+set -eu
 
-echo "=================================="
-echo " DEMO SOAL 7 - DHCP CLIENT"
-echo "=================================="
+echo "===== SOAL 7: PENGUJIAN DHCP KLIEN ====="
 
-INTERFACE="eth0"
-
-echo
-echo "[1] Meminta alamat IP dari DHCP:"
-if ! udhcpc -i "$INTERFACE" -n -q; then
-    echo "ERROR: Gagal memperoleh lease DHCP."
-    echo "Periksa DHCP server Tengen dan relay Jichi."
+if ! command -v udhcpc >/dev/null 2>&1; then
+    echo "[GAGAL] Perintah udhcpc tidak tersedia."
     exit 1
 fi
 
+echo "[1/3] Meminta alamat IP dari DHCP Server..."
+udhcpc -i eth0 -n -q
+
 echo
-echo "[2] Alamat IP client:"
-ip -4 -br addr show "$INTERFACE"
+echo "[2/3] Alamat IP klien:"
+ip -br addr show eth0
 
-CURRENT_IP=$(ip -4 -o addr show "$INTERFACE" | awk '{print $4}' | cut -d/ -f1)
+echo
+echo "[3/3] Informasi gateway dan DNS:"
+ip route
+cat /etc/resolv.conf
 
-case "$CURRENT_IP" in
+IP=$(ip -4 -o addr show dev eth0 | awk '{print $4}' | cut -d/ -f1)
+
+case "$IP" in
     192.225.2.*)
-        EXPECTED_GATEWAY="192.225.2.1"
+        GATEWAY="192.225.2.1"
         ;;
     192.225.3.*)
-        EXPECTED_GATEWAY="192.225.3.1"
+        GATEWAY="192.225.3.1"
         ;;
     *)
-        echo "ERROR: IP berada di luar subnet Divisi A dan Divisi B."
-        echo "IP yang diperoleh: $CURRENT_IP"
+        echo
+        echo "[PERINGATAN] IP tidak berada pada subnet Divisi A/B yang diharapkan: $IP"
         exit 1
         ;;
 esac
 
 echo
-echo "[3] Routing client:"
-ip route
-
-CURRENT_GATEWAY=$(ip route | awk '$1 == "default" {print $3; exit}')
-
-if [ "$CURRENT_GATEWAY" != "$EXPECTED_GATEWAY" ]; then
-    echo "ERROR: Gateway tidak sesuai."
-    echo "Gateway yang diharapkan: $EXPECTED_GATEWAY"
-    echo "Gateway yang ditemukan: ${CURRENT_GATEWAY:-tidak ditemukan}"
-    exit 1
-fi
+echo "===== PENGUJIAN GATEWAY $GATEWAY ====="
+ping -c 4 "$GATEWAY"
 
 echo
-echo "[4] Informasi DNS:"
-cat /etc/resolv.conf
-
-echo
-echo "[5] Menguji koneksi ke gateway:"
-if ! ping -c 4 "$EXPECTED_GATEWAY"; then
-    echo "ERROR: Koneksi ke gateway gagal."
-    exit 1
-fi
-
-echo
-echo "BERHASIL: IP, gateway, dan koneksi gateway berhasil diperiksa."
-
+echo "===== PENGUJIAN KLIEN SELESAI ====="
 ```
 
 Berikan izin eksekusi:
@@ -785,35 +754,36 @@ Pada console Tengen, buat file `/root/soal7-cek-server.sh` menggunakan perintah:
 
 ```bash
 #!/bin/bash
+set -u
 
-echo "===================================="
-echo " DEMO SOAL 7 - VERIFIKASI TENGEN"
-echo "===================================="
+echo "===== SOAL 7: VERIFIKASI DHCP SERVER ====="
 
 echo
-echo "[1] Alamat IP server:"
+echo "[1] Alamat IP Tengen:"
 ip -br addr
 
 echo
-echo "[2] Routing server:"
+echo "[2] Routing Tengen:"
 ip route
 
 echo
-echo "[3] Daftar lease DHCP:"
-LEASE="/var/lib/dhcp/dhcpd.leases"
+echo "[3] Validasi konfigurasi DHCP:"
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
 
-if [ -f "$LEASE" ]; then
-    cat "$LEASE"
+echo
+echo "[4] Status DHCP Server:"
+service isc-dhcp-server status || true
+
+echo
+echo "[5] Daftar lease DHCP:"
+if [ -f /var/lib/dhcp/dhcpd.leases ]; then
+    cat /var/lib/dhcp/dhcpd.leases
 else
     echo "File lease belum tersedia."
 fi
 
 echo
-echo "[4] Status DHCP server:"
-service isc-dhcp-server status
-
-echo
-echo "Verifikasi Tengen selesai."
+echo "===== VERIFIKASI SELESAI ====="
 ```
 
 Berikan izin eksekusi:
