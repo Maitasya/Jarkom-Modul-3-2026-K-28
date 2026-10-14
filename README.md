@@ -2197,7 +2197,7 @@ OK: relay pulih dan berjalan.
 
 **SS  Script Pemulihan DHCP Relay**
 
-<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/8928dadb-abde-4104-aed2-5fdfad080bc7" />
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/ca0e280b-8ef3-47b9-a540-e7283638cbc0" />
 
 ### 5. Menguji Client Setelah Pemulihan
 
