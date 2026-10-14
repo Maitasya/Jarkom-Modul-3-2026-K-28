@@ -842,3 +842,237 @@ Script dijalankan melalui console masing-masing perangkat dengan urutan berikut:
 Script ini dijalankan pada perangkat masing-masing, bukan seluruhnya dari satu console. Jika DHCP relay sudah berjalan, script tidak membuat proses relay baru. Untuk menghindari gangguan, jangan menghentikan relay selama pengujian klien berlangsung.
 
 ---
+
+# Soal 8
+## Packet Capture Proses DHCP Menggunakan tcpdump
+
+Lakukan packet capture saat client Network 2 atau Network 3 meminta lease baru. Gunakan `tcpdump` pada Tengen untuk membuktikan urutan DHCPDISCOVER → DHCPOFFER → DHCPREQUEST → DHCPACK, serta mengidentifikasi alamat server, alamat IP client, lease time, dan `giaddr` yang sesuai dengan interface Jichi.
+
+## Langkah Pengerjaan
+
+### Langkah 1 — Memastikan DHCP Relay Aktif
+
+**Konsol perangkat: Jichi**
+
+Periksa proses DHCP Relay dan alamat interface menggunakan perintah:
+
+```bash
+pgrep -a dhcrelay; ip -br addr | grep -E "eth[2-4]"
+```
+
+Jika relay belum berjalan, jalankan:
+
+```bash
+dhcrelay -d -i eth2 -i eth3 -i eth4 192.225.4.10
+```
+
+Pastikan `eth2` terhubung ke Network 2, `eth3` ke Network 3, dan `eth4` ke Data Center. Biarkan relay aktif selama pengujian dan jangan menjalankan proses relay ganda.
+
+**SS 8-01 — DHCP Relay Aktif di Jichi**
+
+<img width="960" height="516" alt="Soal8 Relay aktif di Jichi" src="https://github.com/user-attachments/assets/8b0e66c6-4962-4bdc-93f8-9cd76bbfd322" />
+
+### Langkah 2 — Memeriksa DHCP Server
+
+**Konsol perangkat: Tengen**
+
+Periksa status DHCP Server:
+
+```bash
+service isc-dhcp-server status
+```
+
+Periksa IP server dan rentang alamat yang tersedia:
+
+```bash
+ip -br addr show eth0
+grep -n "range" /etc/dhcp/dhcpd.conf
+```
+
+Hasil yang diharapkan: DHCP Server aktif dan interface `eth0` memiliki alamat `192.225.4.10/24`.
+
+**SS 8-02 — DHCP Server Aktif di Tengen**
+
+<img width="960" height="516" alt="Soal8 DHCP server aktif di Tengen  " src="https://github.com/user-attachments/assets/eabb4325-ee9a-4c80-b03d-5d8e069015e3" />
+
+### Langkah 3 — Menjalankan Packet Capture
+
+**Konsol perangkat: Tengen**
+
+Jalankan script yang sudah dibuat:
+
+```bash
+bash /root/soal8.sh
+```
+
+Tunggu hingga muncul instruksi:
+
+```text
+>>> SEKARANG jalankan udhcpc di client (maks 90 detik) <<<
+```
+
+Instruksi tersebut menandakan bahwa client harus segera meminta lease baru agar paket DHCP tertangkap.
+
+**SS 8-03 — Packet Capture Siap pada Tengen**
+
+<img width="960" height="516" alt="Soal8 SS 8-04 (Tengen)" src="https://github.com/user-attachments/assets/af40e61c-c324-453d-984f-5a260eabeae4" />
+
+### Langkah 4 — Meminta Lease Baru dari Itadori
+
+**Konsol perangkat: Itadori**
+
+Setelah instruksi muncul pada Tengen, jalankan:
+
+```bash
+ip addr flush dev eth0; udhcpc -i eth0 -n -q; ip -4 -br addr show eth0; ip route
+```
+
+Perintah ini menghapus IP IPv4 sebelumnya, meminta lease DHCP baru, lalu menampilkan alamat IP dan routing client.
+
+Hasil aktual:
+
+```text
+lease of 192.225.2.10 obtained from 192.225.4.10
+```
+
+Itadori berhasil memperoleh IP `192.225.2.10` dari DHCP Server `192.225.4.10`. Alamat tersebut termasuk Pool 1 Network 2, yaitu `192.225.2.10–192.225.2.35`.
+
+**SS 8-04 — Itadori Berhasil Mendapatkan Lease DHCP**
+
+<img width="960" height="516" alt="Soal8 SS 8-03 (Itadori)" src="https://github.com/user-attachments/assets/551519be-b031-47e7-ac39-0e26ee76fca3" />
+
+### Langkah 5 — Memeriksa Urutan Paket DHCP
+
+**Konsol perangkat: Tengen**
+
+Hasil packet capture yang diperoleh:
+
+```text
+=== URUTAN DHCP ===
+192.225.4.1.67 > 192.225.4.10.67: [udp sum ok] BOOTP/DHCP, Request from 02:42:33:e9:7e:00, length 300, hops 1, xid 0x27a4ce0e, Flags [none] (0x0000)
+DHCP-Message (53), length 1: Discover
+192.225.4.10.67 > 192.225.2.1.67: [udp sum ok] BOOTP/DHCP, Reply, length 300, hops 1, xid 0x27a4ce0e, Flags [none] (0x0000)
+DHCP-Message (53), length 1: Offer
+192.225.4.1.67 > 192.225.4.10.67: [udp sum ok] BOOTP/DHCP, Request from 02:42:33:e9:7e:00, length 300, hops 1, xid 0x27a4ce0e, secs 1, Flags [none] (0x0000)
+DHCP-Message (53), length 1: Request
+192.225.4.10.67 > 192.225.2.1.67: [udp sum ok] BOOTP/DHCP, Reply, length 300, hops 1, xid 0x27a4ce0e, secs 1, Flags [none] (0x0000)
+DHCP-Message (53), length 1: ACK
+```
+
+Capture menunjukkan urutan DHCPDISCOVER, DHCPOFFER, DHCPREQUEST, dan DHCPACK. Keempat pesan memiliki transaction ID (`xid`) yang sama, yaitu `0x27a4ce0e`.
+
+**SS 8-05 — Urutan Paket DHCP**
+
+### Langkah 6 — Mengidentifikasi Field Penting
+
+**Konsol perangkat: Tengen**
+
+Ringkasan hasil capture:
+
+```text
+=== RINGKASAN ===
+Server-ID : 192.225.4.10
+Your-IP   : 192.225.2.10
+Lease     : 600 detik
+giaddr    : 192.225.2.1
+BERHASIL: giaddr 192.225.2.1 sesuai interface Jichi
+```
+
+| Parameter | Hasil |
+|---|---|
+| DHCP Server | `192.225.4.10` |
+| IP client | `192.225.2.10` |
+| Lease time | 600 detik |
+| `giaddr` | `192.225.2.1` |
+| Interface Jichi | `eth2` |
+
+Nilai `giaddr` `192.225.2.1` sesuai dengan interface `eth2` pada Jichi yang terhubung ke Network 2.
+
+**SS 8-06 — Ringkasan Field DHCP dan Verifikasi giaddr**
+
+### Langkah 7 — Memeriksa File Packet Capture
+
+**Konsol perangkat: Tengen**
+
+Untuk membaca kembali paket yang tersimpan, jalankan:
+
+```bash
+tcpdump -r /root/soal8.pcap -n -vvv 2>/dev/null | grep -E "BOOTP/DHCP|DHCP-Message|Gateway-IP|Your-IP|Server-ID|Lease-Time"
+```
+
+Perintah ini membaca file `/root/soal8.pcap` dan menampilkan pesan DHCP beserta field penting yang tersedia dalam hasil capture.
+
+**SS 8-07 — Verifikasi File Packet Capture**
+
+<img width="960" height="516" alt="soal8 Bukti mentah dari file capture" src="https://github.com/user-attachments/assets/820d6434-6770-4aea-9ffa-0380a278297b" />
+
+## Otomatisasi Pengujian Packet Capture DHCP Menggunakan Script
+
+isi script soal8.sh
+
+```
+#!/bin/bash
+PCAP=/root/soal8.pcap; TXT=/root/soal8.txt
+rm -f $PCAP $TXT
+timeout 90 tcpdump -i eth0 -n -U -w $PCAP 'udp and (port 67 or port 68)' >/dev/null 2>&1 &
+sleep 2
+echo ">>> SEKARANG jalankan udhcpc di client (maks 90 detik) <<<"
+for i in $(seq 1 45); do
+  tcpdump -r $PCAP -n -vvv 2>/dev/null | grep -q "DHCP-Message.*ACK" && break
+  sleep 2
+done
+sleep 1
+pkill -INT tcpdump
+sleep 1
+tcpdump -r $PCAP -n -vvv > $TXT 2>/dev/null
+if [ ! -s $TXT ]; then echo "GAGAL: 0 paket. Cek relay Jichi."; exit 1; fi
+echo; echo "=== URUTAN DHCP ==="
+grep -E "BOOTP/DHCP|DHCP-Message" $TXT | sed 's/^[[:space:]]*//'
+echo; echo "=== FIELD PENTING ==="
+grep -E "Gateway-IP|Your-IP|Server-ID|Lease-Time" $TXT | sed 's/^[[:space:]]*//'
+IP=$(grep -m1 "Your-IP" $TXT | grep -oE '[0-9]+(\.[0-9]+){3}' | head -1)
+GI=$(grep -m1 "Gateway-IP" $TXT | grep -oE '[0-9]+(\.[0-9]+){3}' | head -1)
+SV=$(grep -m1 "Server-ID" $TXT | grep -oE '[0-9]+(\.[0-9]+){3}' | head -1)
+LT=$(grep -m1 "Lease-Time" $TXT | grep -oE '[0-9]+' | tail -1)
+echo; echo "=== RINGKASAN ==="
+echo "Server-ID : $SV"; echo "Your-IP   : $IP"; echo "Lease     : $LT detik"; echo "giaddr    : $GI"
+case "$IP" in 192.225.2.*) EX=192.225.2.1;; 192.225.3.*) EX=192.225.3.1;; esac
+[ "$GI" = "$EX" ] && echo "BERHASIL: giaddr $GI sesuai interface Jichi" || echo "CEK: giaddr $GI, harusnya $EX"
+```
+
+### Script Packet Capture pada Tengen
+
+**Cara menjalankan script**
+
+Pada konsol Tengen, jalankan:
+
+```bash
+bash /root/soal8.sh
+```
+
+Script digunakan untuk menangkap paket DHCP, menampilkan urutan pesan, serta merangkum alamat server, IP client, lease time, dan `giaddr`.
+
+**Cara menjalankan pengujian client**
+
+Saat Tengen menampilkan instruksi untuk meminta lease, jalankan pada konsol Itadori:
+
+```bash
+ip addr flush dev eth0; udhcpc -i eth0 -n -q; ip -4 -br addr show eth0; ip route
+```
+
+Setelah pengujian selesai, periksa hasil capture pada Tengen.
+
+**Catatan:** Script menggunakan batas waktu maksimal 90 detik sesuai instruksi terminal. Client harus meminta lease ketika proses capture masih aktif.
+
+### Urutan Script untuk Demonstrasi
+
+1. **Jichi:** periksa DHCP Relay menggunakan `pgrep -a dhcrelay; ip -br addr | grep -E "eth[2-4]"`.
+2. **Tengen:** periksa DHCP Server menggunakan `service isc-dhcp-server status`.
+3. **Tengen:** jalankan `bash /root/soal8.sh` dan tunggu instruksi.
+4. **Itadori:** jalankan perintah `udhcpc` beserta pemeriksaan IP dan routing.
+5. **Tengen:** periksa urutan DHCP, ringkasan field, dan nilai `giaddr`.
+6. **Tengen:** jika diperlukan, baca file `/root/soal8.pcap` menggunakan `tcpdump -r`.
+
+## Kesimpulan
+
+Packet capture pada Tengen berhasil menunjukkan urutan DHCPDISCOVER → DHCPOFFER → DHCPREQUEST → DHCPACK dengan transaction ID `0x27a4ce0e`. Itadori memperoleh IP `192.225.2.10` dari server `192.225.4.10` dengan lease time 600 detik. Nilai `giaddr` sebesar `192.225.2.1` sesuai dengan interface `eth2` pada Jichi. Hasil ini
