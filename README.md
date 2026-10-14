@@ -1793,3 +1793,444 @@ Setelah pengujian selesai, periksa hasil capture pada Tengen.
 ## Kesimpulan
 
 Packet capture pada Tengen berhasil menunjukkan urutan DHCPDISCOVER → DHCPOFFER → DHCPREQUEST → DHCPACK dengan transaction ID `0x27a4ce0e`. Itadori memperoleh IP `192.225.2.10` dari server `192.225.4.10` dengan lease time 600 detik. Nilai `giaddr` sebesar `192.225.2.1` sesuai dengan interface `eth2` pada Jichi. Hasil ini
+
+---
+# SOAL 9 — Pemulihan DHCP Relay pada Gangguan Jaringan
+
+## Deskripsi Tugas
+
+Sebuah gangguan memutus jalur relay sehingga permintaan DHCP dari client tidak sampai ke Data Center. Pengujian dilakukan dengan menghentikan DHCP Relay pada Jichi, memaksa client meminta lease baru, mencatat gejala kegagalan, kemudian memulihkan relay dan mengulangi permintaan DHCP. Keberhasilan dibuktikan dengan client memperoleh alamat IP dari pool jaringan yang benar serta gateway yang sama seperti sebelumnya.
+
+## Langkah Pengerjaan
+
+### 1. Memastikan DHCP Server pada Tengen Berjalan
+
+**Perangkat: Tengen (DHCP Server/Data Center)**
+
+Sebelum membuat simulasi gangguan, pastikan DHCP Server masih berjalan. Hal ini dilakukan agar kegagalan yang terjadi benar-benar berasal dari jalur relay, bukan karena DHCP Server berhenti.
+
+Jalankan perintah berikut pada terminal Tengen:
+
+```bash
+systemctl status isc-dhcp-server --no-pager
+```
+
+**Hasil yang diharapkan:**
+
+Status service menunjukkan `active (running)`, yang berarti DHCP Server sedang berjalan.
+
+Jika service sudah berjalan, lanjutkan ke tahap berikutnya.
+   
+
+### 2. Menghentikan DHCP Relay pada Jichi
+
+**Perangkat: Jichi (Router/Relay)**
+
+DHCP Relay bertugas meneruskan permintaan DHCP dari client di Network 2 dan Network 3 menuju DHCP Server pada Tengen. Untuk membuat simulasi gangguan, proses relay dihentikan sementara.
+
+Periksa proses relay yang sedang berjalan:
+
+```bash
+pgrep -a dhcrelay
+```
+
+Jika proses ditemukan, hentikan DHCP Relay menggunakan:
+
+```bash
+pkill dhcrelay
+```
+
+Kemudian periksa kembali prosesnya:
+
+```bash
+pgrep -a dhcrelay
+```
+
+**Hasil yang diharapkan:**
+
+Tidak ada proses `dhcrelay` yang ditampilkan setelah proses dihentikan. Dengan demikian, permintaan DHCP dari client tidak dapat diteruskan melalui relay menuju server.
+
+
+### 3. Menguji Client Saat DHCP Relay Mengalami Gangguan
+
+**Perangkat: Itadori (Client Network 2)**
+
+Setelah DHCP Relay dihentikan, client dipaksa menghapus konfigurasi IP pada interface `eth0` dan meminta lease baru. Langkah ini dilakukan untuk menguji apakah client masih dapat memperoleh alamat IP ketika jalur relay terputus.
+
+Jalankan perintah berikut pada terminal Itadori:
+
+```bash
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+```
+
+Perintah pertama menghapus alamat IP pada interface `eth0`, sedangkan perintah kedua meminta alamat IP baru melalui DHCP.
+
+**Hasil pengujian:**
+
+Karena DHCP Relay sedang berhenti, permintaan DHCP dari Itadori seharusnya tidak sampai ke Tengen. Client dapat menampilkan pesan `broadcasting discover` tanpa memperoleh lease, kemudian proses permintaan berakhir tanpa alamat IP baru.
+
+Gejala tersebut menunjukkan bahwa client tidak memperoleh lease selama jalur relay terputus. Catat hasil terminal yang benar-benar muncul saat pengujian.
+
+
+### 4. Memulihkan DHCP Relay pada Jichi
+
+**Perangkat: Jichi (Router/Relay)**
+
+Setelah gejala gangguan dicatat, DHCP Relay dijalankan kembali agar permintaan DHCP client dapat diteruskan ke server.
+
+Jalankan perintah berikut pada terminal Jichi:
+
+```bash
+dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10
+```
+
+Keterangan:
+- `eth2` terhubung ke Network 2.
+- `eth3` terhubung ke Network 3.
+- `eth4` terhubung ke jaringan Data Center.
+- `192.225.4.10` merupakan alamat DHCP Server pada Tengen.
+
+Perintah ini dapat berjalan di foreground dan mempertahankan terminal tetap aktif. **Jangan tutup terminal tersebut selama pengujian.** Jika perintah sudah berjalan, gunakan terminal Jichi lain untuk melakukan pemeriksaan.
+
+Periksa proses relay dari terminal Jichi lain:
+
+```bash
+pgrep -a dhcrelay
+```
+
+**Hasil yang diharapkan:**
+
+Proses `dhcrelay` kembali ditemukan dan meneruskan permintaan DHCP dari Network 2 maupun Network 3 menuju DHCP Server Tengen.
+
+### 5. Meminta Lease Baru Setelah Relay Pulih
+
+**Perangkat: Itadori (Client Network 2)**
+
+Setelah DHCP Relay aktif kembali, ulangi permintaan DHCP pada Itadori. Langkah ini digunakan untuk membuktikan bahwa client dapat memperoleh alamat IP setelah jalur komunikasi dipulihkan.
+
+Jalankan:
+
+```bash
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+```
+
+**Hasil pengujian aktual:**
+
+```text
+udhcpc: started, v1.37.0
+udhcpc: broadcasting discover
+udhcpc: broadcasting select for 192.225.2.13, server 192.225.4.10
+udhcpc: lease of 192.225.2.13 obtained from 192.225.4.10, lease time 595
+```
+
+Output menunjukkan bahwa Itadori berhasil memperoleh lease baru `192.225.2.13` dari DHCP Server `192.225.4.10` dengan lease time 595 detik.
+
+### 6. Memeriksa Alamat IP dan Gateway Client
+
+**Perangkat: Itadori (Client Network 2)**
+
+Setelah lease berhasil diperoleh, periksa alamat IP dan routing untuk memastikan client berada pada jaringan yang benar dan menggunakan gateway semula.
+
+Jalankan:
+
+```bash
+ip -4 -br addr show eth0
+ip route
+```
+
+**Hasil pengujian aktual:**
+
+```text
+eth0             UNKNOWN        192.225.2.13/24
+default via 192.225.2.1 dev eth0 metric 85793
+192.225.2.0/24 dev eth0 proto kernel scope link src 192.225.2.13
+```
+
+Berdasarkan hasil tersebut:
+- **Alamat IP client:** `192.225.2.13/24`.
+- **Jaringan client:** `192.225.2.0/24` atau Network 2.
+- **Gateway:** `192.225.2.1`.
+- **DHCP Server:** `192.225.4.10`.
+- **Status:** Berhasil memperoleh lease baru setelah relay dipulihkan.
+
+Alamat `192.225.2.13` berada dalam pool Network 2, yaitu `192.225.2.10–192.225.2.35`. Gateway `192.225.2.1` juga sesuai dengan konfigurasi jaringan Itadori.
+
+
+### 7. Memastikan DHCP Server Tetap Berjalan
+
+**Perangkat: Tengen (DHCP Server/Data Center)**
+
+Sebagai pemeriksaan akhir, pastikan DHCP Server tetap berjalan setelah pengujian gangguan dan pemulihan relay.
+
+Jalankan:
+
+```bash
+systemctl status isc-dhcp-server --no-pager
+```
+
+Pastikan status service menunjukkan `active (running)`. Pool Network 2 yang digunakan dalam pengujian mencakup alamat `192.225.2.10–192.225.2.35`, sehingga alamat `192.225.2.13` yang diperoleh Itadori termasuk dalam rentang yang benar.
+
+
+## Kesimpulan
+
+Pengujian Soal 9 dilakukan dengan menghentikan DHCP Relay pada Jichi, menguji permintaan lease baru dari client Itadori, kemudian mengaktifkan kembali relay dan mengulangi permintaan DHCP. Saat relay berhenti, permintaan DHCP seharusnya gagal memperoleh lease karena jalur menuju Data Center terputus. Setelah relay dipulihkan, Itadori berhasil memperoleh alamat IP `192.225.2.13/24` dari DHCP Server `192.225.4.10`, dengan gateway `192.225.2.1`. Alamat IP tersebut berada dalam pool Network 2 yang sesuai, sehingga pemulihan jalur relay berhasil dibuktikan.
+
+---
+
+## Otomatisasi Pengujian Menggunakan Script
+
+Setelah pengujian manual dilakukan, proses gangguan dan pemulihan dapat dijalankan menggunakan script yang telah disiapkan. Bagian ini menggunakan script yang sama, tanpa mengubah isi script.
+
+### 1. Memulihkan DHCP Server pada Tengen
+
+**Perangkat: Tengen**
+
+isi script:
+
+```
+#!/bin/bash
+echo "=================================="
+echo " DEMO SOAL 9 - PULIHKAN DHCP SERVER"
+echo "=================================="
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+if ! command -v dhcpd >/dev/null 2>&1; then
+    apt-get update && apt-get install -y isc-dhcp-server || { echo "ERROR: gagal memasang isc-dhcp-server"; exit 1; }
+fi
+cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf
+printf 'INTERFACESv4="eth0"\nINTERFACESv6=""\n' > /etc/default/isc-dhcp-server
+ip -4 addr show eth0 | grep -q "192.225.4.10/24" || ip addr add 192.225.4.10/24 dev eth0
+ip route | grep -q "^default" || ip route add default via 192.225.4.1
+dhcpd -t -cf /etc/dhcp/dhcpd.conf || { echo "ERROR: dhcpd.conf tidak valid"; exit 1; }
+service isc-dhcp-server restart
+service isc-dhcp-server status
+grep -n "range" /etc/dhcp/dhcpd.conf
+```
+
+Jalankan:
+
+```bash
+bash /root/soal9-pulihkan-dhcp.sh
+```
+
+Script digunakan untuk memulihkan dan memeriksa service ISC DHCP Server serta menampilkan rentang pool yang dikonfigurasi.
+
+**Hasil aktual:** Status DHCP Server menunjukkan `dhcpd is running`, dan rentang pool Network 2 serta Network 3 ditampilkan.
+
+**SS  Otomatisasi Pemulihan DHCP Server**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/7ed26197-5132-4ced-8e58-5dbbb1c8c6d8" />
+
+### 2. Menjalankan Simulasi Gangguan pada Jichi
+
+**Perangkat: Jichi**
+
+isi script:
+
+```
+#!/bin/bash
+SERVER="192.225.4.10"
+echo "=================================="
+echo " DEMO SOAL 9 - DHCP RELAY JICHI"
+echo "=================================="
+case "$1" in
+  stop)
+    echo "[1] Menghentikan DHCP relay:"
+    pkill dhcrelay 2>/dev/null
+    sleep 1
+    if pgrep -x dhcrelay >/dev/null; then
+        echo "ERROR: relay masih berjalan."; exit 1
+    fi
+    echo "OK: relay dihentikan."
+    echo "[2] Status relay:"
+    ps aux | grep '[d]hcrelay' || echo "(tidak ada proses dhcrelay)"
+    ;;
+  start)
+    echo "[1] Memeriksa paket dhcrelay:"
+    if ! command -v dhcrelay >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update && apt-get install -y isc-dhcp-relay || { echo "ERROR: gagal memasang relay"; exit 1; }
+    fi
+    echo "OK"
+    echo "[2] Memulihkan DHCP relay:"
+    pkill dhcrelay 2>/dev/null
+    sleep 1
+    dhcrelay -i eth2 -i eth3 -i eth4 "$SERVER" >/dev/null 2>&1
+    sleep 2
+    if pgrep -x dhcrelay >/dev/null; then
+        ps aux | grep '[d]hcrelay'
+        echo "OK: relay pulih dan berjalan."
+    else
+        echo "ERROR: relay gagal berjalan."; exit 1
+    fi
+    ;;
+  *)
+    echo "Pemakaian: bash /root/soal9-jichi.sh stop|start"; exit 1
+    ;;
+esac
+```
+Jalankan:
+
+```bash
+bash /root/soal9-jichi.sh stop
+```
+
+Script menghentikan DHCP Relay untuk mensimulasikan gangguan. Output yang diharapkan adalah:
+
+```text
+OK: relay dihentikan.
+```
+
+**SS Script Penghentian DHCP Relay**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/9307b20d-5366-4a60-a4b7-46b18cb81178" />
+
+### 3. Menguji Client dalam Kondisi Gangguan
+
+isi script:
+
+```
+#!/bin/bash
+MODE="$1"
+IFACE="eth0"
+echo "=================================="
+echo " DEMO SOAL 9 - CLIENT ($MODE)"
+echo "=================================="
+
+echo
+echo "[1] Menghapus IP lama:"
+ip addr flush dev "$IFACE"
+ip -4 -br addr show "$IFACE"
+
+echo
+echo "[2] Meminta lease baru:"
+udhcpc -i "$IFACE" -n -q -t 3 -T 2
+RC=$?
+
+echo
+echo "[3] IP dan routing sesudah permintaan:"
+ip -4 -br addr show "$IFACE"
+ip route
+
+CURRENT_IP=$(ip -4 -o addr show "$IFACE" | awk '{print $4}' | cut -d/ -f1)
+
+if [ "$MODE" = "gangguan" ]; then
+    echo
+    if [ "$RC" -ne 0 ] || [ -z "$CURRENT_IP" ]; then
+        echo "GEJALA TERCATAT:"
+        echo "- udhcpc mengirim DISCOVER berulang tanpa OFFER"
+        echo "- udhcpc gagal: no lease"
+        echo "- eth0 tidak memiliki alamat IP"
+        echo "- tidak ada default gateway"
+    else
+        echo "PERINGATAN: client masih memperoleh lease ($CURRENT_IP)."
+        echo "Pastikan relay Jichi sudah dihentikan."
+    fi
+    exit 0
+fi
+
+if [ "$RC" -ne 0 ] || [ -z "$CURRENT_IP" ]; then
+    echo
+    echo "ERROR: client belum memperoleh lease. Pastikan relay Jichi sudah dipulihkan."
+    exit 1
+fi
+
+LAST=${CURRENT_IP##*.}
+GW=""; POOL="tidak"
+case "$CURRENT_IP" in
+    192.225.2.*)
+        GW="192.225.2.1"
+        if { [ "$LAST" -ge 10 ] && [ "$LAST" -le 35 ]; } || { [ "$LAST" -ge 70 ] && [ "$LAST" -le 95 ]; }; then POOL="ya"; fi
+        ;;
+    192.225.3.*)
+        GW="192.225.3.1"
+        if { [ "$LAST" -ge 10 ] && [ "$LAST" -le 89 ]; } || { [ "$LAST" -ge 100 ] && [ "$LAST" -le 199 ]; } || [ "$LAST" -eq 99 ]; then POOL="ya"; fi
+        ;;
+    *)
+        echo "ERROR: IP di luar Network 2 dan 3: $CURRENT_IP"; exit 1
+        ;;
+esac
+
+CURRENT_GW=$(ip route | awk '$1 == "default" {print $3; exit}')
+
+echo
+echo "IP diperoleh : $CURRENT_IP (pool benar: $POOL)"
+echo "Gateway      : ${CURRENT_GW:-tidak ada} (diharapkan $GW)"
+if [ "$POOL" = "ya" ] && [ "$CURRENT_GW" = "$GW" ]; then
+    echo "BERHASIL: client kembali memperoleh alamat dari pool yang benar dengan gateway semula."
+else
+    echo "ERROR: pool atau gateway tidak sesuai."
+    exit 1
+fi
+```
+**Perangkat: Itadori**
+
+Jalankan:
+
+```bash
+bash /root/soal9-client.sh gangguan
+```
+
+Script menjalankan pengujian DHCP saat relay berhenti dan mencatat gejala kegagalan yang ditemukan.
+
+**SS  Script Pengujian Client Saat Gangguan**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/2408514e-33dd-4a0f-89e0-802631db72a5" />
+
+### 4. Memulihkan DHCP Relay pada Jichi
+
+**Perangkat: Jichi**
+
+Jalankan:
+
+```bash
+bash /root/soal9-jichi.sh start
+bash /root/soal9-nat-jichi.sh
+```
+
+Script mengaktifkan kembali DHCP Relay. Output yang diharapkan adalah:
+
+```text
+OK: relay pulih dan berjalan.
+```
+
+**SS  Script Pemulihan DHCP Relay**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/8928dadb-abde-4104-aed2-5fdfad080bc7" />
+
+### 5. Menguji Client Setelah Pemulihan
+
+**Perangkat: Itadori**
+
+Jalankan:
+
+```bash
+bash /root/soal9-client.sh pulih
+```
+
+**Hasil aktual:**
+
+```text
+IP diperoleh : 192.225.2.13 (pool benar: ya)
+Gateway      : 192.225.2.1 (diharapkan 192.225.2.1)
+BERHASIL: client kembali memperoleh alamat dari pool yang benar dengan gateway semula.
+```
+
+Hasil tersebut membuktikan bahwa client kembali mendapatkan alamat dari pool yang benar dan menggunakan gateway semula setelah DHCP Relay dipulihkan.
+
+**SS  Hasil Otomatisasi Pemulihan Client**
+
+<img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/01b4b7b7-702b-40a3-91ed-6208844a5058" />
+
+## Urutan Demo Otomatis
+
+1. **Tengen:** Jalankan `bash /root/soal9-pulihkan-dhcp.sh`.
+2. **Jichi:** Jalankan `bash /root/soal9-jichi.sh stop`.
+3. **Itadori:** Jalankan `bash /root/soal9-client.sh gangguan`.
+4. **Jichi:** Jalankan `bash /root/soal9-jichi.sh start`.
+5. **Itadori:** Jalankan `bash /root/soal9-client.sh pulih`.
+
+Dengan urutan tersebut, demonstrasi menunjukkan kondisi sebelum pemulihan, gejala gangguan, proses pemulihan relay, dan keberhasilan client mendapatkan lease baru.
+
+**Catatan dokumentasi:** Pastikan screenshot mode `gangguan` berisi output yang benar-benar muncul pada terminalmu. Jangan menggunakan hasil yang diharapkan sebagai bukti hasil aktual apabila output tersebut belum diperoleh saat pengujian.
