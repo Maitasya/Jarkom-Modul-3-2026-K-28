@@ -2253,8 +2253,8 @@ ps -p 1 -o comm=
 ```
 
 **Hasil yang diharapkan:** `dumb-init`, artinya node **bukan systemd**. `systemctl enable` tidak berlaku, sehingga autostart dibuat lewat `/root/autostart.sh` yang dipanggil dari `/root/.bashrc` (berjalan saat console node dibuka).
+<img width="308" height="98" alt="image" src="https://github.com/user-attachments/assets/bfb837b5-ec57-4dfe-9ca1-f605e7180be2" />
 
-📸 **SS 10-01:** Pemeriksaan init system tengen
 
 ### Langkah 2: Memeriksa Konfigurasi DHCP Server
 
@@ -2268,7 +2268,8 @@ grep -c "pool1-clients\|short-lease\|long-lease\|host kugisaki" /root/dhcpd.conf
 
 **Hasil yang diharapkan:** `INTERFACESv4="eth0"`, `dhcpd -t` tanpa error, dan hitungan `grep` bernilai 6 atau lebih (config lengkap).
 
-📸 **SS 10-02:** Validasi konfigurasi server
+<img width="727" height="303" alt="image" src="https://github.com/user-attachments/assets/7ef0b1da-7abf-48de-8164-2e635546817d" />
+
 
 ### Langkah 3: Memeriksa Konfigurasi DHCP Relay
 
@@ -2288,7 +2289,7 @@ OPTIONS=""
 
 `eth4` disertakan karena balasan dari tengen masuk lewat eth4.
 
-📸 **SS 10-03:** Konfigurasi relay jichi
+<img width="414" height="99" alt="image" src="https://github.com/user-attachments/assets/7bc9fe30-e4b6-4735-9d77-db4ee2094951" />
 
 ### Langkah 4: Mengaktifkan Autostart Layanan
 
@@ -2367,8 +2368,6 @@ Cara menjalankan manual (jika perlu): `bash /root/autostart.sh`
 
 Klik kanan node, **Configure**, **Advanced**, isi **Start command** dengan `bash /root/autostart.sh` (tengen dan jichi, jika opsinya tersedia).
 
-📸 **SS 10-04:** `cat /root/autostart.sh` dan `grep autostart /root/.bashrc` di tengen dan jichi
-
 ### Langkah 5: Melakukan Restart Kedua Node
 
 **Console perangkat:** GNS3
@@ -2381,7 +2380,7 @@ Klik kanan node, **Configure**, **Advanced**, isi **Start command** dengan `bash
 
 > Autostart lewat `.bashrc` berjalan saat console dibuka. Jika console belum dibuka, layanan belum aktif dan client akan gagal mendapat lease. Itu bukan kesalahan konfigurasi.
 
-📸 **SS 10-05:** Restart node tengen dan jichi di GNS3
+
 
 ### Langkah 6: Memeriksa Status Layanan Setelah Restart
 
@@ -2408,7 +2407,9 @@ iptables -t nat -S | grep MASQ
 - Tengen: layanan aktif, proses `dhcpd` ada, eth0 hanya `192.225.4.10/24`, `default via 192.225.4.1`.
 - Jichi: proses `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10`, eth1 sampai eth4 punya IP `.1`, ip_forward bernilai 1, ada `MASQUERADE`.
 
-📸 **SS 10-06:** Status layanan tengen dan jichi setelah restart
+<img width="714" height="306" alt="image" src="https://github.com/user-attachments/assets/8e9882db-ade1-4773-afd0-ba6f7b40497f" />
+<img width="718" height="307" alt="image" src="https://github.com/user-attachments/assets/c59a3ecf-5b2d-4847-89c7-0db1a06019f9" />
+
 
 ### Langkah 7: Memeriksa Lease dan Kebijakan Pool
 
@@ -2427,8 +2428,6 @@ grep "^lease" /var/lib/dhcp/dhcpd.leases | awk '{print $2}' | awk -F. '$3==2 && 
 - Perintah ketiga kosong (tidak ada lease di `.2.36` sampai `.2.69`).
 - Kugisaki memakai `fixed-address 192.225.3.99`. Host reservasi tidak selalu tercatat di `dhcpd.leases`, sehingga buktinya adalah blok `host kugisaki` dan output `udhcpc` di client.
 - Entri IP yang sama muncul berulang karena `dhcpd.leases` adalah jurnal (renew menambah entri dengan MAC yang sama).
-
-📸 **SS 10-07:** Verifikasi lease DHCP
 
 ### Langkah 8: Memeriksa IP, Gateway, dan DNS Client
 
@@ -2454,8 +2453,6 @@ Di setiap client juga harus ada: netmask `/24`, `default via` gateway wilayahnya
 
 > Lease time yang tampil di `udhcpc` adalah sisa waktu, bukan nilai penuh. Contoh: 1714 berarti lease 1800 yang sudah berjalan sekitar 86 detik.
 
-📸 **SS 10-08:** Verifikasi IP, gateway, dan DNS client (satu screenshot per client, atau gabungkan)
-
 ### Langkah 9: Menguji Konektivitas Client
 
 **Console perangkat:** Client Network 2 dan Network 3
@@ -2469,7 +2466,6 @@ Perintah pertama otomatis memakai gateway wilayah client (`192.225.2.1` atau `19
 
 **Hasil yang diharapkan:** ping gateway berhasil (membuktikan relay dan routing jichi), ping `8.8.8.8` berhasil (membuktikan NAT jichi).
 
-📸 **SS 10-09:** Pengujian konektivitas client Network 2 dan Network 3
 
 ---
 
@@ -2555,8 +2551,6 @@ apt-get install -y bind9 bind9-utils dnsutils
 
 Paket `bind9` digunakan untuk menjalankan layanan DNS, `bind9-utils` menyediakan utilitas pemeriksaan konfigurasi, sedangkan `dnsutils` menyediakan perintah pengujian DNS seperti `dig`.
 
-**Bukti screenshot 1:** Tampilkan proses instalasi paket atau hasil bahwa paket BIND9 telah tersedia.
-
 ### 3.2. Membuat direktori zona DNS pada Utahime
 
 Jalankan perintah berikut:
@@ -2597,7 +2591,6 @@ Keterangan:
 
 Simpan file dengan `Ctrl + O`, tekan `Enter`, kemudian keluar menggunakan `Ctrl + X`.
 
-**Bukti screenshot 2:** Tampilkan konfigurasi zona Master di `named.conf.local`.
 
 ### 3.4. Membuat file zona DNS Master
 
@@ -2634,7 +2627,7 @@ Penjelasan:
 
 Simpan file setelah selesai.
 
-**Bukti screenshot 3:** Tampilkan isi file `/etc/bind/zones/db.jujutsu.k28.com`.
+
 
 ### 3.5. Memvalidasi konfigurasi Master
 
@@ -2654,7 +2647,8 @@ Hasil yang diharapkan adalah pesan yang menunjukkan zona berhasil dimuat dan ber
 
 Pemeriksaan ini memastikan konfigurasi dan sintaks file zona dapat diterima oleh BIND9.
 
-**Bukti screenshot 4:** Tampilkan hasil `named-checkconf` dan `named-checkzone` yang berhasil.
+<img width="712" height="122" alt="image" src="https://github.com/user-attachments/assets/8d7a80c7-868f-42fd-a38c-db04cc943904" />
+
 
 ### 3.6. Menginstal dan mengonfigurasi DNS Slave pada Shoko
 
@@ -2699,9 +2693,7 @@ Simpan konfigurasi, kemudian validasi:
 
 ```bash
 named-checkconf
-```
-
-**Bukti screenshot 5:** Tampilkan konfigurasi zona Slave dan hasil validasi `named-checkconf`.
+````.
 
 ### 3.7. Menjalankan DNS Slave dan memeriksa zone transfer
 
@@ -2729,7 +2721,8 @@ ls -l /var/cache/bind/db.jujutsu.k28.com
 
 File tersebut seharusnya tersedia setelah transfer berhasil.
 
-**Bukti screenshot 6:** Tampilkan log transfer zona yang berhasil atau keberadaan file zona hasil transfer pada Shoko.
+<img width="751" height="77" alt="image" src="https://github.com/user-attachments/assets/f8af01e0-b3b8-4446-aab3-d45c10965ca2" />
+
 
 ### 3.8. Menguji DNS Master dan Slave
 
