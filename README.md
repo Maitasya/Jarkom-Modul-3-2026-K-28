@@ -2224,48 +2224,57 @@ Hasil tersebut membuktikan bahwa client kembali mendapatkan alamat dari pool yan
 <img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/01b4b7b7-702b-40a3-91ed-6208844a5058" />
 
 ## Urutan Demo Otomatis
-# SOAL 10 — Pemulihan dan Autostart Layanan DHCP Setelah Restart
+# Soal 10: Pemulihan dan Autostart Layanan DHCP Setelah Restart
+
+Kelompok K28, prefix `192.225`.
 
 ## Deskripsi Tugas
 
-Pengujian dilakukan untuk memastikan DHCP Server pada Tengen dan DHCP Relay pada Jichi tetap berjalan setelah restart. Pemeriksaan mencakup status layanan, IP, gateway, lease, DNS, dan konektivitas client Network 2–3. Kebijakan Pool 1, Pool 2, short lease, long lease, dan fixed address juga perlu diverifikasi.
+Pengujian memastikan DHCP Server pada Tengen dan DHCP Relay pada Jichi tetap berjalan setelah restart. Pemeriksaan mencakup status layanan, IP, gateway, lease, DNS, dan konektivitas client Network 2 dan 3. Kebijakan Pool 1, Pool 2, short lease, long lease, dan fixed address juga diverifikasi.
+
+| Client | IP yang harus didapat | Lease |
+|---|---|---|
+| itadori, fushiguro | `192.225.2.10` sampai `192.225.2.35` | 600 (default) |
+| zenin, okkotsu | `192.225.2.70` sampai `192.225.2.95` | 600 (default) |
+| ino, kusakabe | `192.225.3.10` sampai `192.225.3.89` | 1800 |
+| miwa | `192.225.3.100` sampai `192.225.3.199` | 43200 |
+| kugisaki | tepat `192.225.3.99` | 600 (default) |
+
+Tidak boleh ada IP di rentang `192.225.2.36` sampai `192.225.2.69`.
+
+---
 
 ## Langkah Pengerjaan
 
-### Langkah 1 — Memeriksa Init System pada Tengen
+### Langkah 1: Memeriksa Init System pada Tengen
 
-**Console perangkat: Tengen**
-
-Jalankan perintah berikut untuk mengetahui init system yang digunakan node.
+**Console perangkat:** Tengen
 
 ```bash
 ps -p 1 -o comm=
 ```
 
-**Hasil yang diharapkan:** Jika hasilnya `systemd`, autostart dapat diatur dengan `systemctl enable`. Jika tidak, gunakan mekanisme autostart yang sesuai dengan lingkungan node.
+**Hasil yang diharapkan:** `dumb-init`, artinya node **bukan systemd**. `systemctl enable` tidak berlaku, sehingga autostart dibuat lewat `/root/autostart.sh` yang dipanggil dari `/root/.bashrc` (berjalan saat console node dibuka).
 
-**SS 10-01 — Pemeriksaan Init System Tengen**
+📸 **SS 10-01:** Pemeriksaan init system tengen
 
-### Langkah 2 — Memeriksa Konfigurasi DHCP Server
+### Langkah 2: Memeriksa Konfigurasi DHCP Server
 
-**Console perangkat: Tengen**
-
-Jalankan perintah berikut untuk memeriksa interface server dan sintaks konfigurasi DHCP.
+**Console perangkat:** Tengen
 
 ```bash
 cat /etc/default/isc-dhcp-server
 dhcpd -t -cf /etc/dhcp/dhcpd.conf
+grep -c "pool1-clients\|short-lease\|long-lease\|host kugisaki" /root/dhcpd.conf
 ```
 
-**Hasil yang diharapkan:** Interface server mengarah ke `eth0` dan pemeriksaan konfigurasi tidak menghasilkan kesalahan sintaks.
+**Hasil yang diharapkan:** `INTERFACESv4="eth0"`, `dhcpd -t` tanpa error, dan hitungan `grep` bernilai 6 atau lebih (config lengkap).
 
-**SS 10-02 — Validasi Konfigurasi Server**
+📸 **SS 10-02:** Validasi konfigurasi server
 
-### Langkah 3 — Memeriksa Konfigurasi DHCP Relay
+### Langkah 3: Memeriksa Konfigurasi DHCP Relay
 
-**Console perangkat: Jichi**
-
-Jalankan perintah berikut untuk memastikan alamat server tujuan dan interface relay sudah sesuai.
+**Console perangkat:** Jichi
 
 ```bash
 cat /etc/default/isc-dhcp-relay
@@ -2273,357 +2282,242 @@ cat /etc/default/isc-dhcp-relay
 
 **Hasil yang diharapkan:**
 
-```text
+```
 SERVERS="192.225.4.10"
-INTERFACES="eth2 eth3"
+INTERFACES="eth2 eth3 eth4"
 OPTIONS=""
 ```
 
-**SS 10-03 — Konfigurasi Relay Jichi**
+`eth4` disertakan karena balasan dari tengen masuk lewat eth4.
 
-### Langkah 4 — Mengaktifkan Autostart Layanan
+📸 **SS 10-03:** Konfigurasi relay jichi
 
-**Console perangkat: Tengen dan Jichi**
+### Langkah 4: Mengaktifkan Autostart Layanan
 
-Jika node menggunakan systemd, jalankan perintah berikut pada masing-masing perangkat.
+#### 4.1 Tengen
 
-Pada **Tengen**:
-
-```bash
-systemctl enable isc-dhcp-server
-systemctl is-enabled isc-dhcp-server
-```
-
-Pada **Jichi**:
+**Console perangkat:** Tengen
 
 ```bash
-systemctl enable isc-dhcp-relay
-systemctl is-enabled isc-dhcp-relay
-```
-
-**Hasil yang diharapkan:** Kedua layanan menampilkan status `enabled` jika konfigurasi autostart berhasil.
-
-**SS 10-04 — Pengaktifan Autostart**
-
-### Langkah 5 — Melakukan Restart Kedua Node
-
-**Console perangkat: GNS3**
-
-Lakukan Stop pada node Tengen dan Jichi, kemudian Start kembali kedua node. Tunggu sampai proses boot selesai sebelum memeriksa status layanan.
-
-**Hasil yang diharapkan:** Kedua node kembali aktif dan layanan DHCP dapat berjalan tanpa perlu dinyalakan manual.
-
-**SS 10-05 — Restart Node Tengen dan Jichi**
-
-### Langkah 6 — Memeriksa Status Layanan Setelah Restart
-
-**Console perangkat: Tengen**
-
-```bash
-service isc-dhcp-server status
-ip -br a
-ip route
-```
-
-**Console perangkat: Jichi**
-
-```bash
-service isc-dhcp-relay status
-ip -br a
-cat /proc/sys/net/ipv4/ip_forward
-```
-
-**Hasil yang diharapkan:** Layanan berjalan, alamat IP dan routing sesuai konfigurasi, serta IP forwarding pada Jichi bernilai `1`.
-
-**SS 10-06 — Status Layanan Setelah Restart**
-
-### Langkah 7 — Memeriksa Lease dan Kebijakan Pool
-
-**Console perangkat: Tengen**
-
-Jalankan perintah berikut untuk memeriksa database lease DHCP.
-
-```bash
-cat /var/lib/dhcp/dhcpd.leases
-```
-
-**Hasil yang diharapkan:** Alamat IP client sesuai dengan pool yang ditentukan dan tidak terdapat alokasi pada rentang terlarang. Durasi short lease, long lease, dan fixed address harus dicocokkan dengan konfigurasi DHCP yang digunakan.
-
-**SS 10-07 — Verifikasi Lease DHCP**
-
-### Langkah 8 — Memeriksa IP, Gateway, dan DNS Client
-
-**Console perangkat: Client Network 2 dan Network 3**
-
-Lakukan pemeriksaan pada Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusakabe, Miwa, dan Kugisaki.
-
-```bash
-ip -4 -br addr show eth0
-ip route
-cat /etc/resolv.conf
-```
-
-**Hasil yang diharapkan:** Client memperoleh IP sesuai jaringan dan pool masing-masing, menggunakan netmask `/24`, serta memiliki gateway dan DNS sesuai konfigurasi. Client dengan fixed address harus memperoleh IP yang telah ditentukan.
-
-**SS 10-08 — Verifikasi IP, Gateway, dan DNS Client**
-
-### Langkah 9 — Menguji Konektivitas Client
-
-**Console perangkat: Client Network 2 dan Network 3**
-
-Pada client Network 2, uji gateway `192.225.2.1`, sedangkan pada Network 3 gunakan gateway `192.225.3.1`.
-
-```bash
-ping -c 2 192.225.2.1
-ping -c 2 google.com
-```
-
-Untuk client Network 3, ganti alamat gateway dengan `192.225.3.1`.
-
-**Hasil yang diharapkan:** Ping gateway berhasil dan nama domain dapat diresolusikan. Ping internet diharapkan berhasil apabila koneksi keluar tersedia dan ICMP tidak dibatasi.
-
-**SS 10-09 — Pengujian Konektivitas Client**
-
-## Catatan Pengujian Ulang
-
-Perintah pemeriksaan status layanan, alamat IP, routing, dan database lease dapat dijalankan kembali setelah restart. Pastikan layanan benar-benar aktif setelah node dinyalakan ulang dan jangan menyimpulkan keberhasilan sebelum hasil pemeriksaan diperoleh.
-
-## Kesimpulan
-
-Pengujian ini memastikan autostart DHCP Server pada Tengen dan DHCP Relay pada Jichi berjalan setelah restart. Keberhasilan dibuktikan melalui status layanan, kesesuaian IP dan gateway client, database lease, kebijakan pool, serta konektivitas jaringan. Kesimpulan akhir harus mengikuti hasil pengujian aktual.
-
----
-
-## Otomatisasi Pengujian Pemulihan DHCP Menggunakan Script
-
-### 1. Script Autostart dan Verifikasi Server pada Tengen
-
-**Console perangkat: Tengen**
-
-Buat file `/root/soal10-tengen.sh` dengan isi script berikut.
-
-```bash
-cat > /root/soal10-tengen.sh <<'SCRIPT'
-#!/bin/bash
-# soal10-tengen.sh : node tengen (DHCP Server)
-PREFIX="192.225"    # <-- GANTI sesuai prefix kelompok
-
-# 1. Validasi config dulu
-dhcpd -t -cf /etc/dhcp/dhcpd.conf || { echo "CONFIG ERROR, berhenti."; exit 1; }
-
-# 2. Pastikan interface server + file lease ada
-sed -i 's/^INTERFACESv4=.*/INTERFACESv4="eth0"/' /etc/default/isc-dhcp-server
-mkdir -p /var/lib/dhcp
-touch /var/lib/dhcp/dhcpd.leases
-
-# 3. Autostart
-if [ "$(ps -p 1 -o comm=)" = "systemd" ]; then
-    systemctl enable isc-dhcp-server
-    systemctl restart isc-dhcp-server
-    systemctl is-enabled isc-dhcp-server
-else
-    cat > /root/autostart.sh <<EOF
+cat > /root/soal10-tengen.sh <<'EOF'
 #!/bin/bash
 ip link set eth0 up
-ip addr add ${PREFIX}.4.10/24 dev eth0 2>/dev/null
-ip route replace default via ${PREFIX}.4.1
+ip addr flush dev eth0
+ip addr add 192.225.4.10/24 dev eth0
+ip route replace default via 192.225.4.1
 echo "nameserver 192.168.122.1" > /etc/resolv.conf
+cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf
 mkdir -p /var/lib/dhcp
-touch /var/lib/dhcp/dhcpd.leases
-service isc-dhcp-server status >/dev/null 2>&1 || service isc-dhcp-server start
+: > /var/lib/dhcp/dhcpd.leases
+sed -i 's/^INTERFACESv4=.*/INTERFACESv4="eth0"/' /etc/default/isc-dhcp-server
+pgrep -x dhcpd >/dev/null || service isc-dhcp-server start
 EOF
-    chmod +x /root/autostart.sh
-    grep -q "autostart.sh" /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
-    service isc-dhcp-server restart
-fi
-
-# 4. Verifikasi
-echo "=== STATUS ==="
-service isc-dhcp-server status
-ip -br a
-ip route
-ping -c 2 ${PREFIX}.4.1
-SCRIPT
+cp /root/soal10-tengen.sh /root/autostart.sh
+chmod +x /root/soal10-tengen.sh /root/autostart.sh
+grep -q autostart.sh /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
 ```
 
-Berikan izin eksekusi dan jalankan script:
+Cara menjalankan manual (jika perlu): `bash /root/autostart.sh`
+
+| Baris | Fungsi |
+|---|---|
+| `ip addr flush dev eth0` | Menghapus IP nyasar sebelum memasang `192.225.4.10` |
+| `ip route replace default via 192.225.4.1` | Balasan DHCP ke relay butuh default route yang benar |
+| `cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf` | Memulihkan config lengkap dari salinan di `/root` |
+| `: > /var/lib/dhcp/dhcpd.leases` | Mengosongkan lease lama |
+| `pgrep -x dhcpd \|\| service ... start` | Menjalankan dhcpd hanya jika belum berjalan |
+
+#### 4.2 Jichi
+
+**Console perangkat:** Jichi
 
 ```bash
-chmod +x /root/soal10-tengen.sh
-/root/soal10-tengen.sh
-```
-
-**Fungsi:** Script memvalidasi konfigurasi, menyiapkan database lease, dan mengatur autostart DHCP Server. Script juga menampilkan status layanan, IP, routing, dan hasil ping gateway.
-
-**SS 10-10 — Eksekusi Script Tengen**
-
-### 2. Script Autostart dan Verifikasi Relay pada Jichi
-
-**Console perangkat: Jichi**
-
-Buat file `/root/soal10-jichi.sh` dengan isi berikut.
-
-```bash
-cat > /root/soal10-jichi.sh <<'SCRIPT'
+cat > /root/soal10-jichi.sh <<'EOF'
 #!/bin/bash
-# soal10-jichi.sh : node jichi (Router + DHCP Relay)
-PREFIX="192.225"    # <-- GANTI sesuai prefix kelompok
-
-# 1. Config DHCP Relay
-cat > /etc/default/isc-dhcp-relay <<EOF
-SERVERS="${PREFIX}.4.10"
-INTERFACES="eth2 eth3"
-OPTIONS=""
-EOF
-
-# 2. Forwarding + NAT saat ini juga
+for i in 0 1 2 3 4; do ip link set eth$i up; done
+ip addr add 192.225.1.1/24 dev eth1 2>/dev/null
+ip addr add 192.225.2.1/24 dev eth2 2>/dev/null
+ip addr add 192.225.3.1/24 dev eth3 2>/dev/null
+ip addr add 192.225.4.1/24 dev eth4 2>/dev/null
 echo 1 > /proc/sys/net/ipv4/ip_forward
 iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null || \
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-
-# 3. Autostart
-if [ "$(ps -p 1 -o comm=)" = "systemd" ]; then
-    systemctl enable isc-dhcp-relay
-    systemctl restart isc-dhcp-relay
-    systemctl is-enabled isc-dhcp-relay
-else
-    # Tanpa systemd: buat autostart.sh lalu panggil dari .bashrc
-    cat > /root/autostart.sh <<EOF
-#!/bin/bash
-echo 1 > /proc/sys/net/ipv4/ip_forward
-iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-pgrep dhcrelay >/dev/null || service isc-dhcp-relay start
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+pgrep -x dhcrelay >/dev/null || dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10
 EOF
-    chmod +x /root/autostart.sh
-    grep -q "autostart.sh" /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
-    service isc-dhcp-relay restart
-fi
+cp /root/soal10-jichi.sh /root/autostart.sh
+chmod +x /root/soal10-jichi.sh /root/autostart.sh
+grep -q autostart.sh /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
 
-# 4. Verifikasi
-echo "=== STATUS ==="
-service isc-dhcp-relay status
+cat > /etc/default/isc-dhcp-relay <<'EOF'
+SERVERS="192.225.4.10"
+INTERFACES="eth2 eth3 eth4"
+OPTIONS=""
+EOF
+```
+
+Cara menjalankan manual (jika perlu): `bash /root/autostart.sh`
+
+| Baris | Fungsi |
+|---|---|
+| `ip addr add ... eth1` sampai `eth4` | Mengembalikan IP gateway tiap network (IP hilang saat node di-stop) |
+| `ip_forward = 1` | Mengaktifkan routing antar network |
+| `iptables ... MASQUERADE` | NAT keluar lewat eth0 |
+| `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10` | Meneruskan DHCP dari Network 2 dan 3 ke tengen |
+
+#### 4.3 (Opsional) Start command GNS3
+
+Klik kanan node, **Configure**, **Advanced**, isi **Start command** dengan `bash /root/autostart.sh` (tengen dan jichi, jika opsinya tersedia).
+
+📸 **SS 10-04:** `cat /root/autostart.sh` dan `grep autostart /root/.bashrc` di tengen dan jichi
+
+### Langkah 5: Melakukan Restart Kedua Node
+
+**Console perangkat:** GNS3
+
+1. **Stop semua node** (tengen, jichi, dan client).
+2. **Start** tengen, jichi, lalu semua client.
+3. Buka console **tengen**, lalu **jichi**, dan tunggu sekitar 10 detik. Jangan menjalankan script apa pun secara manual.
+
+**Hasil yang diharapkan:** layanan DHCP berjalan tanpa dinyalakan manual.
+
+> Autostart lewat `.bashrc` berjalan saat console dibuka. Jika console belum dibuka, layanan belum aktif dan client akan gagal mendapat lease. Itu bukan kesalahan konfigurasi.
+
+📸 **SS 10-05:** Restart node tengen dan jichi di GNS3
+
+### Langkah 6: Memeriksa Status Layanan Setelah Restart
+
+**Console perangkat:** Tengen
+
+```bash
+service isc-dhcp-server status
+ps aux | grep [d]hcpd
+ip -br a
+ip route
+```
+
+**Console perangkat:** Jichi
+
+```bash
+ps aux | grep [d]hcrelay
 ip -br a
 cat /proc/sys/net/ipv4/ip_forward
-iptables -t nat -L POSTROUTING -n
-SCRIPT
+iptables -t nat -S | grep MASQ
 ```
 
-Berikan izin eksekusi dan jalankan script:
+**Hasil yang diharapkan:**
+
+- Tengen: layanan aktif, proses `dhcpd` ada, eth0 hanya `192.225.4.10/24`, `default via 192.225.4.1`.
+- Jichi: proses `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10`, eth1 sampai eth4 punya IP `.1`, ip_forward bernilai 1, ada `MASQUERADE`.
+
+📸 **SS 10-06:** Status layanan tengen dan jichi setelah restart
+
+### Langkah 7: Memeriksa Lease dan Kebijakan Pool
+
+**Console perangkat:** Tengen (jalankan setelah Langkah 8 agar semua client tercatat)
 
 ```bash
-chmod +x /root/soal10-jichi.sh
-/root/soal10-jichi.sh
+grep -E "^lease|starts|ends|hardware ethernet" /var/lib/dhcp/dhcpd.leases
+grep -n "kugisaki" -A 8 /etc/dhcp/dhcpd.conf
+grep "^lease" /var/lib/dhcp/dhcpd.leases | awk '{print $2}' | awk -F. '$3==2 && $4>=36 && $4<=69'
 ```
 
-**Fungsi:** Script mengatur konfigurasi DHCP Relay, IP forwarding, dan NAT. Status layanan serta konfigurasi jaringan diperiksa setelah script dijalankan.
+**Hasil yang diharapkan:**
 
-**SS 10-11 — Eksekusi Script Jichi**
+- Short lease (ino, kusakabe): selisih `starts` dan `ends` tepat 30 menit.
+- Long lease (miwa): selisih tepat 12 jam.
+- Perintah ketiga kosong (tidak ada lease di `.2.36` sampai `.2.69`).
+- Kugisaki memakai `fixed-address 192.225.3.99`. Host reservasi tidak selalu tercatat di `dhcpd.leases`, sehingga buktinya adalah blok `host kugisaki` dan output `udhcpc` di client.
+- Entri IP yang sama muncul berulang karena `dhcpd.leases` adalah jurnal (renew menambah entri dengan MAC yang sama).
 
-### 3. Script Verifikasi Client
+📸 **SS 10-07:** Verifikasi lease DHCP
 
-**Console perangkat: Setiap client**
+### Langkah 8: Memeriksa IP, Gateway, dan DNS Client
 
-Buat file `/root/soal10-client.sh` pada setiap client menggunakan script berikut.
+**Console perangkat:** Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusakabe, Miwa, Kugisaki
 
-```bash
-cat > /root/soal10-client.sh <<'SCRIPT'
-#!/bin/sh
-# soal10-client.sh : semua client (alpinet)
-IF=eth0
-echo "=== Hostname: $(hostname) ==="
+Jalankan satu perintah ini di **setiap client**:
 
-# Aktifkan interface terlebih dahulu
-ip link set $IF up
-
-# Kill proses udhcpc yang mungkin masih nyangkut
-killall udhcpc 2>/dev/null
-
-# Jalankan udhcpc untuk minta lease baru
-udhcpc -i $IF -n -q 2>&1
-
-echo "=== IP ==="
-ip a show $IF
-echo "=== ROUTE ==="
-ip route
-echo "=== DNS / DOMAIN SEARCH ==="
-cat /etc/resolv.conf
-
-GW=$(ip route | awk '/default/ {print $3}')
-if [ -n "$GW" ]; then
-    echo "=== PING GATEWAY ($GW) ==="
-    ping -c 2 $GW
-else
-    echo "=== GATEWAY BELUM ADA ==="
-fi
-echo "=== PING INTERNET ==="
-ping -c 2 google.com
-SCRIPT
+```sh
+udhcpc -i eth0 -n -q 2>&1 | grep "lease of"; ip -4 -br addr show eth0; ip route; cat /etc/resolv.conf
 ```
 
-Berikan izin eksekusi dan jalankan:
+**Hasil yang diharapkan:**
 
-```bash
-chmod +x /root/soal10-client.sh
-sh /root/soal10-client.sh
+| Client | Hasil |
+|---|---|
+| itadori, fushiguro | `.2.10` sampai `.2.35` |
+| zenin, okkotsu | `.2.70` sampai `.2.95` |
+| ino, kusakabe | `.3.10` sampai `.3.89`, lease sekitar 1800 |
+| miwa | `.3.100` sampai `.3.199`, lease sekitar 43200 |
+| kugisaki | tepat `.3.99` |
+
+Di setiap client juga harus ada: netmask `/24`, `default via` gateway wilayahnya (`192.225.2.1` untuk Network 2, `192.225.3.1` untuk Network 3), `search K28.com`, `nameserver 192.225.1.2`, dan `nameserver 192.225.1.3`.
+
+> Lease time yang tampil di `udhcpc` adalah sisa waktu, bukan nilai penuh. Contoh: 1714 berarti lease 1800 yang sudah berjalan sekitar 86 detik.
+
+📸 **SS 10-08:** Verifikasi IP, gateway, dan DNS client (satu screenshot per client, atau gabungkan)
+
+### Langkah 9: Menguji Konektivitas Client
+
+**Console perangkat:** Client Network 2 dan Network 3
+
+```sh
+ping -c 2 -W 2 $(ip route | awk '/default/ {print $3; exit}')
+ping -c 2 -W 2 8.8.8.8
 ```
 
-**Fungsi:** Script meminta lease baru, menampilkan IP, routing, dan DNS, lalu menguji konektivitas ke gateway serta internet.
+Perintah pertama otomatis memakai gateway wilayah client (`192.225.2.1` atau `192.225.3.1`).
 
-**SS 10-12 — Eksekusi Script Client**
+**Hasil yang diharapkan:** ping gateway berhasil (membuktikan relay dan routing jichi), ping `8.8.8.8` berhasil (membuktikan NAT jichi).
 
-### 4. Script Pemeriksaan Lease pada Tengen
+📸 **SS 10-09:** Pengujian konektivitas client Network 2 dan Network 3
 
-**Console perangkat: Tengen**
+---
 
-Buat file `/root/soal10-cek-lease.sh` dengan isi berikut.
+## Catatan Pengujian Ulang
 
-```bash
-cat > /root/soal10-cek-lease.sh <<'SCRIPT'
-#!/bin/bash
-# soal10-cek-lease.sh : node tengen
-F=/var/lib/dhcp/dhcpd.leases
-echo "=== RINGKASAN LEASE ==="
-grep -E "^lease|starts|ends|hardware ethernet|client-hostname" $F
+Perintah pada Langkah 6, 7, 8, dan 9 dapat dijalankan kembali kapan saja setelah restart. Kesimpulan hanya diambil dari output aktual yang diperoleh saat pengujian.
 
-echo "=== IP DOUBLE? (kosong = aman) ==="
-grep "^lease" $F | awk '{print $2}' | sort | uniq -d
+## Hasil Pengujian
 
-echo "=== IP DI RENTANG TERLARANG 2.36-2.69? (kosong = aman) ==="
-grep "^lease" $F | awk '{print $2}' | awk -F. '$3==2 && $4>=36 && $4<=69'
-SCRIPT
-```
+Hasil setelah restart total (ganti dengan hasil tes sendiri jika diulang):
 
-Berikan izin eksekusi dan jalankan:
+| Client | IP | Lease (sisa) | Status |
+|---|---|---|---|
+| itadori | `192.225.2.11` | 558 | Pool 1 |
+| fushiguro | `192.225.2.10` | 538 | Pool 1 |
+| zenin | `192.225.2.71` | 529 | Pool 2 |
+| okkotsu | `192.225.2.70` | 520 | Pool 2 |
+| ino | `192.225.3.11` | 1714 | Short lease |
+| kusakabe | `192.225.3.12` | 1712 | Short lease |
+| miwa | `192.225.3.100` | 43102 | Long lease |
+| kugisaki | `192.225.3.99` | 600 | Fixed address |
 
-```bash
-chmod +x /root/soal10-cek-lease.sh
-bash /root/soal10-cek-lease.sh
-```
+## Urutan Demo
 
-**Fungsi:** Script menampilkan ringkasan lease, mencari alamat lease yang berulang, dan memeriksa alamat dalam rentang Network 2 yang ditandai terlarang.
+1. **GNS3:** Stop semua node, lalu Start tengen, jichi, dan client.
+2. **Tengen, lalu Jichi:** buka console, tunggu 10 detik.
+3. **Tengen dan Jichi:** jalankan perintah Langkah 6.
+4. **Setiap client:** jalankan perintah Langkah 8 dan 9.
+5. **Tengen:** jalankan perintah Langkah 7.
 
-**SS 10-13 — Eksekusi Script Pemeriksaan Lease**
+## Troubleshooting
 
-### 5. Urutan Demo Otomatis
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| Client `no lease, failing` | Console tengen atau jichi belum dibuka | Buka console tengen lalu jichi, tunggu 10 detik, ulangi |
+| Masih `no lease` padahal proses hidup | Kabel salah port atau Packet filter aktif di link GNS3 | Client Network 2 ke jichi eth2, Network 3 ke eth3, tengen eth0 ke jichi eth4. Hapus Packet filters di link |
+| Masih gagal | Kondisi node atau link nyangkut | Stop semua node, lalu Start tengen, jichi, dan client |
+| Tengen punya IP nyasar | Template network configuration lama | `ip addr flush dev eth0` di autostart sudah menangani ini |
+| `dhcpd -t` error | Config rusak atau tertimpa | `cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf`, lalu `dhcpd -t -cf /etc/dhcp/dhcpd.conf` |
+| `systemctl` gagal | Node memakai `dumb-init` | Pakai `service ... start` dan autostart lewat `.bashrc` |
 
-1. **Tengen:** Jalankan `/root/soal10-tengen.sh`.
-2. **Jichi:** Jalankan `/root/soal10-jichi.sh`.
-3. **GNS3:** Stop dan Start kembali node Tengen serta Jichi.
-4. **Tengen:** Jalankan `bash /root/soal10-cek-lease.sh`.
-5. **Setiap client:** Jalankan `sh /root/soal10-client.sh`.
-6. **Semua client yang diuji:** Dokumentasikan IP, gateway, DNS, lease, dan hasil ping.
+## Daftar File
 
-**Catatan:** Pada node tanpa systemd, script menambahkan pemanggilan autostart ke `/root/.bashrc`, yang berjalan saat shell yang sesuai dimulai dan tidak selalu menjamin layanan aktif sebelum client meminta lease. Script client juga belum memverifikasi kebijakan short lease, long lease, dan fixed address secara khusus, sehingga hasilnya tetap harus dicocokkan dengan konfigurasi DHCP dan database lease.
-1. **Tengen:** Jalankan `bash /root/soal9-pulihkan-dhcp.sh`.
-2. **Jichi:** Jalankan `bash /root/soal9-jichi.sh stop`.
-3. **Itadori:** Jalankan `bash /root/soal9-client.sh gangguan`.
-4. **Jichi:** Jalankan `bash /root/soal9-jichi.sh start`.
-5. **Itadori:** Jalankan `bash /root/soal9-client.sh pulih`.
-
-Dengan urutan tersebut, demonstrasi menunjukkan kondisi sebelum pemulihan, gejala gangguan, proses pemulihan relay, dan keberhasilan client mendapatkan lease baru.
-
-**Catatan dokumentasi:** Pastikan screenshot mode `gangguan` berisi output yang benar-benar muncul pada terminalmu. Jangan menggunakan hasil yang diharapkan sebagai bukti hasil aktual apabila output tersebut belum diperoleh saat pengujian.
-
---- 
-
-
+| Node | File | Cara menjalankan |
+|---|---|---|
+| tengen | `/root/dhcpd.conf` | `cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf` |
+| tengen | `/root/soal10-tengen.sh`, `/root/autostart.sh` | `bash /root/autostart.sh` |
+| jichi | `/root/soal10-jichi.sh`, `/root/autostart.sh` | `bash /root/autostart.sh` |
+| jichi | `/etc/default/isc-dhcp-relay` | Dibaca layanan relay |
