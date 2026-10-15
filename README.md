@@ -2519,3 +2519,517 @@ Hasil setelah restart total (ganti dengan hasil tes sendiri jika diulang):
 | tengen | `/root/soal10-tengen.sh`, `/root/autostart.sh` | `bash /root/autostart.sh` |
 | jichi | `/root/soal10-jichi.sh`, `/root/autostart.sh` | `bash /root/autostart.sh` |
 | jichi | `/etc/default/isc-dhcp-relay` | Dibaca layanan relay |
+
+# Soal 11 — Konfigurasi DNS Master dan Slave menggunakan BIND9
+
+## 1. Tujuan
+
+Praktikum ini bertujuan untuk mengonfigurasi layanan DNS menggunakan BIND9 dengan menerapkan arsitektur Master–Slave. Utahime berfungsi sebagai DNS Master yang menyimpan zona DNS utama, sedangkan Shoko berfungsi sebagai DNS Slave yang memperoleh salinan zona dari Master melalui mekanisme zone transfer.
+
+Pengujian dilakukan untuk memastikan kedua server dapat memberikan jawaban DNS yang benar, proses transfer zona berjalan dengan baik, dan perubahan serial zona pada Master tersinkronisasi ke Slave.
+
+## 2. Topologi dan Konfigurasi
+
+| Komponen | Peran | Alamat IP |
+|---|---|---|
+| Utahime | DNS Master | `192.225.1.2/24` |
+| Shoko | DNS Slave | `192.225.1.3/24` |
+| Itadori | Client pengujian | Network 2 |
+| Domain | Zona DNS | `jujutsu.k28.com` |
+
+Nama nameserver yang digunakan:
+
+- `ns1.jujutsu.k28.com` mengarah ke `192.225.1.2`.
+- `ns2.jujutsu.k28.com` mengarah ke `192.225.1.3`.
+
+## 3. Langkah Kerja Manual
+
+### 3.1. Instalasi BIND9 pada Utahime
+
+Pada terminal Utahime, jalankan:
+
+```bash
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+```
+
+Paket `bind9` digunakan untuk menjalankan layanan DNS, `bind9-utils` menyediakan utilitas pemeriksaan konfigurasi, sedangkan `dnsutils` menyediakan perintah pengujian DNS seperti `dig`.
+
+**Bukti screenshot 1:** Tampilkan proses instalasi paket atau hasil bahwa paket BIND9 telah tersedia.
+
+### 3.2. Membuat direktori zona DNS pada Utahime
+
+Jalankan perintah berikut:
+
+```bash
+mkdir -p /etc/bind/zones
+```
+
+Direktori `/etc/bind/zones` digunakan untuk menyimpan file zona DNS Master.
+
+### 3.3. Mengonfigurasi DNS Master
+
+Buka konfigurasi zona lokal:
+
+```bash
+nano /etc/bind/named.conf.local
+```
+
+Tambahkan konfigurasi berikut:
+
+```conf
+zone "jujutsu.k28.com" {
+    type master;
+    file "/etc/bind/zones/db.jujutsu.k28.com";
+    allow-transfer { 192.225.1.3; };
+    also-notify { 192.225.1.3; };
+    notify yes;
+};
+```
+
+Keterangan:
+
+- `type master` menetapkan Utahime sebagai DNS Master.
+- `file` menentukan lokasi file zona DNS.
+- `allow-transfer` mengizinkan Shoko mengambil salinan zona dari Master.
+- `also-notify` memberi tahu Shoko ketika zona diperbarui.
+- `notify yes` mengaktifkan pemberitahuan perubahan zona kepada nameserver terkait.
+
+Simpan file dengan `Ctrl + O`, tekan `Enter`, kemudian keluar menggunakan `Ctrl + X`.
+
+**Bukti screenshot 2:** Tampilkan konfigurasi zona Master di `named.conf.local`.
+
+### 3.4. Membuat file zona DNS Master
+
+Buat dan buka file zona:
+
+```bash
+nano /etc/bind/zones/db.jujutsu.k28.com
+```
+
+Isi file dengan konfigurasi berikut:
+
+```dns
+$TTL 604800
+@   IN  SOA ns1.jujutsu.k28.com. admin.jujutsu.k28.com. (
+        2026101502 ; serial
+        604800     ; refresh
+        86400      ; retry
+        2419200    ; expire
+        604800     ; negative cache TTL
+)
+@    IN NS ns1.jujutsu.k28.com.
+@    IN NS ns2.jujutsu.k28.com.
+
+ns1  IN A 192.225.1.2
+ns2  IN A 192.225.1.3
+```
+
+Penjelasan:
+
+- `SOA` menyimpan informasi utama mengenai zona DNS.
+- `serial` merupakan nomor versi zona yang dinaikkan setiap kali isi zona diubah.
+- `NS` menentukan nameserver yang bertanggung jawab terhadap zona.
+- `A` memetakan nama host nameserver ke alamat IPv4.
+
+Simpan file setelah selesai.
+
+**Bukti screenshot 3:** Tampilkan isi file `/etc/bind/zones/db.jujutsu.k28.com`.
+
+### 3.5. Memvalidasi konfigurasi Master
+
+Jalankan pada Utahime:
+
+```bash
+named-checkconf
+```
+
+Kemudian periksa file zona:
+
+```bash
+named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
+```
+
+Hasil yang diharapkan adalah pesan yang menunjukkan zona berhasil dimuat dan berakhir dengan `OK`.
+
+Pemeriksaan ini memastikan konfigurasi dan sintaks file zona dapat diterima oleh BIND9.
+
+**Bukti screenshot 4:** Tampilkan hasil `named-checkconf` dan `named-checkzone` yang berhasil.
+
+### 3.6. Menginstal dan mengonfigurasi DNS Slave pada Shoko
+
+Pada terminal Shoko, jalankan:
+
+```bash
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+```
+
+Pastikan direktori penyimpanan zona Slave tersedia:
+
+```bash
+mkdir -p /var/cache/bind
+chown bind:bind /var/cache/bind
+chmod 775 /var/cache/bind
+```
+
+Buka konfigurasi zona lokal:
+
+```bash
+nano /etc/bind/named.conf.local
+```
+
+Tambahkan konfigurasi:
+
+```conf
+zone "jujutsu.k28.com" {
+    type slave;
+    masters { 192.225.1.2; };
+    file "/var/cache/bind/db.jujutsu.k28.com";
+};
+```
+
+Keterangan:
+
+- `type slave` menetapkan Shoko sebagai DNS Slave.
+- `masters` menentukan alamat DNS Master yang menjadi sumber zona.
+- `file` menentukan lokasi penyimpanan salinan zona yang diperoleh dari Master.
+
+Simpan konfigurasi, kemudian validasi:
+
+```bash
+named-checkconf
+```
+
+**Bukti screenshot 5:** Tampilkan konfigurasi zona Slave dan hasil validasi `named-checkconf`.
+
+### 3.7. Menjalankan DNS Slave dan memeriksa zone transfer
+
+Pada Shoko, periksa apakah proses `named` sudah berjalan:
+
+```bash
+ps aux | grep '[n]amed'
+```
+
+Jika proses belum berjalan, jalankan:
+
+```bash
+named -u bind
+```
+
+Jika proses sudah berjalan, jangan menjalankan proses kedua. Periksa log BIND9 untuk memastikan transfer zona selesai.
+
+Pada konfigurasi yang diuji, log menunjukkan bahwa transfer zona `jujutsu.k28.com` berhasil, dengan serial `2026101502`.
+
+Periksa file hasil transfer:
+
+```bash
+ls -l /var/cache/bind/db.jujutsu.k28.com
+```
+
+File tersebut seharusnya tersedia setelah transfer berhasil.
+
+**Bukti screenshot 6:** Tampilkan log transfer zona yang berhasil atau keberadaan file zona hasil transfer pada Shoko.
+
+### 3.8. Menguji DNS Master dan Slave
+
+Pada Itadori, jalankan query SOA ke DNS Master:
+
+```bash
+dig @192.225.1.2 jujutsu.k28.com SOA
+```
+
+Kemudian query ke DNS Slave:
+
+```bash
+dig @192.225.1.3 jujutsu.k28.com SOA
+```
+
+Hasil pengujian menunjukkan kedua server memberikan `status: NOERROR` dan flag `aa`. Flag `aa` menunjukkan bahwa jawaban yang diberikan bersifat otoritatif untuk zona yang diuji.
+
+Pada tahap ini, serial awal yang digunakan adalah `2026101502`.
+
+**Bukti screenshot 7:** Tampilkan hasil query SOA ke Master dan Slave.
+
+### 3.9. Menguji A record nameserver melalui Slave
+
+Pada Itadori, jalankan:
+
+```bash
+dig @192.225.1.3 ns1.jujutsu.k28.com A
+dig @192.225.1.3 ns2.jujutsu.k28.com A
+```
+
+Hasil yang diharapkan:
+
+- `ns1.jujutsu.k28.com` mengarah ke `192.225.1.2`.
+- `ns2.jujutsu.k28.com` mengarah ke `192.225.1.3`.
+
+Pengujian ini membuktikan bahwa Slave dapat memberikan jawaban untuk record yang terdapat di zona hasil transfer.
+
+**Bukti screenshot 8:** Tampilkan kedua hasil query A record dari Itadori.
+
+### 3.10. Menguji sinkronisasi perubahan serial
+
+Untuk menguji pembaruan zona, pada Utahime buka kembali file zona:
+
+```bash
+nano /etc/bind/zones/db.jujutsu.k28.com
+```
+
+Naikkan serial dari:
+
+```dns
+2026101502 ; serial
+```
+
+menjadi:
+
+```dns
+2026101503 ; serial
+```
+
+Simpan perubahan, kemudian validasi zona:
+
+```bash
+named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
+```
+
+Jika validasi berhasil, muat ulang zona:
+
+```bash
+rndc reload jujutsu.k28.com
+```
+
+Apabila `rndc` gagal karena belum dikonfigurasi, jangan langsung menghentikan proses BIND9. Periksa pesan kesalahannya terlebih dahulu. Pada lingkungan yang menjalankan `named` langsung, sinyal reload dapat digunakan setelah memastikan proses yang benar:
+
+```bash
+kill -HUP "$(pgrep -xo named)"
+```
+
+Selanjutnya, pada Itadori periksa serial Master:
+
+```bash
+dig @192.225.1.2 jujutsu.k28.com SOA
+```
+
+Kemudian periksa serial Slave:
+
+```bash
+dig @192.225.1.3 jujutsu.k28.com SOA
+```
+
+Hasil pengujian menunjukkan serial pada kedua server menjadi `2026101503`. Dengan demikian, pembaruan zona berhasil tersinkronisasi dari Master ke Slave.
+
+**Bukti screenshot 9:** Tampilkan hasil query SOA yang menunjukkan serial `2026101503` pada Master dan Slave.
+
+### 3.11. Memeriksa konfigurasi DNS pada client
+
+Pada Itadori, jalankan:
+
+```bash
+cat /etc/resolv.conf
+```
+
+Konfigurasi yang diperoleh:
+
+```conf
+search K28.com
+nameserver 192.225.1.2
+nameserver 192.225.1.3
+```
+
+Konfigurasi tersebut menunjukkan bahwa client mencantumkan Utahime sebagai nameserver pertama dan Shoko sebagai nameserver kedua.
+
+Kemudian lakukan pengujian akhir:
+
+```bash
+dig @192.225.1.2 jujutsu.k28.com SOA
+dig @192.225.1.3 jujutsu.k28.com SOA
+
+dig @192.225.1.3 ns1.jujutsu.k28.com A
+dig @192.225.1.3 ns2.jujutsu.k28.com A
+```
+
+Semua query yang diuji menghasilkan `status: NOERROR`. Serial pada kedua server adalah `2026101503`, sedangkan record A nameserver mengarah ke alamat IP yang sesuai.
+
+**Bukti screenshot 10:** Tampilkan konfigurasi `resolv.conf` dan hasil query akhir dari Itadori.
+
+## 4. Script Otomatisasi Konfigurasi
+
+Selain konfigurasi manual, konfigurasi DNS dapat disiapkan menggunakan script Bash. Script berikut merupakan alternatif untuk menyiapkan konfigurasi; script tidak wajib dijalankan ulang apabila konfigurasi yang sudah ada telah berhasil.
+
+**Catatan:** Simpan backup konfigurasi sebelum menjalankan script. Jalankan script Master hanya di Utahime dan script Slave hanya di Shoko. Script ini menulis ulang file zona Master dan menambahkan konfigurasi zona hanya jika belum ada.
+
+### 4.1. Script DNS Master
+
+Buat file:
+
+```bash
+nano /root/soal11_master.sh
+```
+
+Isi file:
+
+```bash
+#!/bin/bash
+set -e
+
+DOMAIN="jujutsu.k28.com"
+SLAVE_IP="192.225.1.3"
+ZONE_DIR="/etc/bind/zones"
+ZONE_FILE="$ZONE_DIR/db.$DOMAIN"
+LOCAL_CONF="/etc/bind/named.conf.local"
+
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+
+mkdir -p "$ZONE_DIR"
+
+# Backup konfigurasi yang sudah ada
+cp -a "$LOCAL_CONF" "$LOCAL_CONF.bak.$(date +%Y%m%d%H%M%S)"
+
+if [ -f "$ZONE_FILE" ]; then
+    cp -a "$ZONE_FILE" "$ZONE_FILE.bak.$(date +%Y%m%d%H%M%S)"
+fi
+
+# Tambahkan zona jika belum terdaftar
+if ! grep -q "zone \"$DOMAIN\"" "$LOCAL_CONF"; then
+    cat >> "$LOCAL_CONF" <<EOF
+
+zone "$DOMAIN" {
+    type master;
+    file "$ZONE_FILE";
+    allow-transfer { $SLAVE_IP; };
+    also-notify { $SLAVE_IP; };
+    notify yes;
+};
+EOF
+fi
+
+# Buat file zona
+cat > "$ZONE_FILE" <<EOF
+\$TTL 604800
+@ IN SOA ns1.$DOMAIN. admin.$DOMAIN. (
+    2026101503
+    604800
+    86400
+    2419200
+    604800
+)
+@   IN NS ns1.$DOMAIN.
+@   IN NS ns2.$DOMAIN.
+ns1 IN A 192.225.1.2
+ns2 IN A 192.225.1.3
+EOF
+
+chown bind:bind "$ZONE_FILE"
+chmod 644 "$ZONE_FILE"
+
+named-checkconf
+named-checkzone "$DOMAIN" "$ZONE_FILE"
+
+if rndc reload "$DOMAIN"; then
+    echo "Zona berhasil di-reload menggunakan rndc."
+elif pgrep -x named >/dev/null; then
+    kill -HUP "$(pgrep -xo named)"
+    echo "Sinyal reload dikirim ke named."
+else
+    named -u bind
+fi
+
+echo "Konfigurasi DNS Master selesai."
+```
+
+Jalankan pada Utahime:
+
+```bash
+chmod +x /root/soal11_master.sh
+bash /root/soal11_master.sh
+```
+
+### 4.2. Script DNS Slave
+
+Buat file pada Shoko:
+
+```bash
+nano /root/soal11_slave.sh
+```
+
+Isi file:
+
+```bash
+#!/bin/bash
+set -e
+
+DOMAIN="jujutsu.k28.com"
+MASTER_IP="192.225.1.2"
+LOCAL_CONF="/etc/bind/named.conf.local"
+ZONE_FILE="/var/cache/bind/db.$DOMAIN"
+
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+
+cp -a "$LOCAL_CONF" "$LOCAL_CONF.bak.$(date +%Y%m%d%H%M%S)"
+
+if ! grep -q "zone \"$DOMAIN\"" "$LOCAL_CONF"; then
+    cat >> "$LOCAL_CONF" <<EOF
+
+zone "$DOMAIN" {
+    type slave;
+    masters { $MASTER_IP; };
+    file "$ZONE_FILE";
+};
+EOF
+fi
+
+mkdir -p /var/cache/bind
+chown bind:bind /var/cache/bind
+chmod 775 /var/cache/bind
+
+named-checkconf
+
+if pgrep -x named >/dev/null; then
+    if ! rndc reload "$DOMAIN"; then
+        kill -HUP "$(pgrep -xo named)"
+    fi
+else
+    named -u bind
+fi
+
+echo "Konfigurasi DNS Slave selesai."
+echo "Periksa hasil transfer dengan:"
+echo "dig @192.225.1.3 $DOMAIN SOA"
+```
+
+Jalankan pada Shoko:
+
+```bash
+chmod +x /root/soal11_slave.sh
+bash /root/soal11_slave.sh
+```
+
+Script Slave mengambil salinan zona dari Master melalui mekanisme zone transfer. Jika proses BIND9 sudah berjalan, script mencoba melakukan reload dan tidak sengaja menjalankan proses kedua.
+
+## 5. Hasil Pengujian
+
+Berdasarkan pengujian yang dilakukan, diperoleh hasil sebagai berikut:
+
+| Pengujian | Hasil |
+|---|---|
+| Validasi konfigurasi Master | Berhasil |
+| Validasi zona Master | Berhasil |
+| Zone transfer ke Shoko | Berhasil |
+| Query SOA ke Master | `NOERROR` |
+| Query SOA ke Slave | `NOERROR` |
+| A record `ns1` melalui Slave | `192.225.1.2` |
+| A record `ns2` melalui Slave | `192.225.1.3` |
+| Sinkronisasi serial | `2026101502` menjadi `2026101503` |
+| Query dari Itadori ke kedua DNS | Berhasil |
+
+## 6. Kesimpulan
+
+Pada praktikum ini, layanan DNS Master–Slave menggunakan BIND9 berhasil dikonfigurasi. Utahime berfungsi sebagai DNS Master dengan zona `jujutsu.k28.com`, sedangkan Shoko berfungsi sebagai DNS Slave yang memperoleh salinan zona melalui zone transfer.
+
+Keberhasilan konfigurasi dibuktikan melalui validasi zona, query SOA dan A record, serta pengujian perubahan serial dari `2026101502` menjadi `2026101503`. Kedua DNS memberikan jawaban `NOERROR` saat diuji dari client Itadori. Hasil ini menunjukkan bahwa layanan DNS Master–Slave dan sinkronisasi zona telah berfungsi sesuai pengujian yang dilakukan.
+
