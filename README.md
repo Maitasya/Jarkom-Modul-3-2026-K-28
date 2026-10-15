@@ -2226,8 +2226,6 @@ Hasil tersebut membuktikan bahwa client kembali mendapatkan alamat dari pool yan
 ## Urutan Demo Otomatis
 # Soal 10: Pemulihan dan Autostart Layanan DHCP Setelah Restart
 
-Kelompok K28, prefix `192.225`.
-
 ## Deskripsi Tugas
 
 Pengujian memastikan DHCP Server pada Tengen dan DHCP Relay pada Jichi tetap berjalan setelah restart. Pemeriksaan mencakup status layanan, IP, gateway, lease, DNS, dan konektivitas client Network 2 dan 3. Kebijakan Pool 1, Pool 2, short lease, long lease, dan fixed address juga diverifikasi.
