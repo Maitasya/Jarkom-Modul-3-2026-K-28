@@ -3173,3 +3173,880 @@ Pada praktikum ini, layanan DNS Master–Slave menggunakan BIND9 berhasil dikonf
 
 Keberhasilan konfigurasi dibuktikan melalui validasi zona, query SOA dan A record, serta pengujian perubahan serial dari `2026101502` menjadi `2026101503`. Kedua DNS memberikan jawaban `NOERROR` saat diuji dari client Itadori. Hasil ini menunjukkan bahwa layanan DNS Master–Slave dan sinkronisasi zona telah berfungsi sesuai pengujian yang dilakukan.
 
+---
+---
+# Soal 11
+## Konfigurasi DNS Master dan Slave menggunakan BIND9
+
+Utahime dan Shoko membangun sistem penamaan domain agar pos tidak perlu menghafal IP mentah. BIND9 dikonfigurasi pada Utahime sebagai DNS Master dan Shoko sebagai DNS Slave untuk domain `jujutsu.k28.com`. Zona harus tersinkronisasi otomatis ke Shoko saat serial dinaikkan, dibuktikan dengan `dig` ke kedua server dari client.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memasang BIND9 di Utahime dan Shoko
+
+**Console perangkat: Utahime dan Shoko**
+
+```bash
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+```
+
+**Hasil yang diharapkan:** paket terpasang tanpa error. Pastikan `nameserver 192.168.122.1` terpasang di `/etc/resolv.conf` agar unduhan berhasil.
+
+#### Langkah 2 — Mengonfigurasi Zona Master
+
+**Console perangkat: Utahime**
+
+```bash
+mkdir -p /etc/bind/zones
+nano /etc/bind/named.conf.local
+```
+
+Isi:
+
+```conf
+zone "jujutsu.k28.com" {
+    type master;
+    file "/etc/bind/zones/db.jujutsu.k28.com";
+    allow-transfer { 192.225.1.3; };
+    also-notify { 192.225.1.3; };
+    notify yes;
+};
+```
+
+`allow-transfer` mengizinkan Shoko mengambil zona, sedangkan `also-notify` memberi tahu Shoko saat zona berubah.
+
+**SS 11-01 — Konfigurasi Zona Master**
+
+> **[TEMPAT SCREENSHOT 11-01]**: `cat /etc/bind/named.conf.local` di Utahime.
+
+#### Langkah 3 — Membuat File Zona
+
+**Console perangkat: Utahime**
+
+```bash
+nano /etc/bind/zones/db.jujutsu.k28.com
+```
+
+Isi:
+
+```dns
+$TTL 604800
+@   IN  SOA ns1.jujutsu.k28.com. admin.jujutsu.k28.com. (
+        2026101502 ; serial
+        604800     ; refresh
+        86400      ; retry
+        2419200    ; expire
+        604800 )   ; negative cache TTL
+@    IN NS ns1.jujutsu.k28.com.
+@    IN NS ns2.jujutsu.k28.com.
+ns1  IN A 192.225.1.2
+ns2  IN A 192.225.1.3
+```
+
+Validasi:
+
+```bash
+named-checkconf
+named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
+```
+
+**Hasil yang diharapkan:** `named-checkzone` berakhir dengan `OK`.
+
+**SS 11-02 — Validasi Zona**
+
+> **[TEMPAT SCREENSHOT 11-02]**: output `named-checkconf` dan `named-checkzone`.
+
+#### Langkah 4 — Mengonfigurasi Zona Slave
+
+**Console perangkat: Shoko**
+
+```bash
+mkdir -p /var/cache/bind
+chown bind:bind /var/cache/bind
+nano /etc/bind/named.conf.local
+```
+
+Isi:
+
+```conf
+zone "jujutsu.k28.com" {
+    type slave;
+    masters { 192.225.1.2; };
+    file "/var/cache/bind/db.jujutsu.k28.com";
+};
+```
+
+Validasi dengan `named-checkconf`.
+
+**SS 11-03 — Konfigurasi Zona Slave**
+
+> **[TEMPAT SCREENSHOT 11-03]**: `cat /etc/bind/named.conf.local` di Shoko.
+
+#### Langkah 5 — Menjalankan BIND9 dan Memeriksa Zone Transfer
+
+**Console perangkat: Utahime lalu Shoko**
+
+```bash
+pgrep -a named || named -u bind
+```
+
+Di Shoko, periksa file hasil transfer:
+
+```bash
+ls -l /var/cache/bind/db.jujutsu.k28.com
+```
+
+**Hasil yang diharapkan:** file zona muncul di Shoko. Jika `named` sudah berjalan, jangan menjalankan proses kedua.
+
+**SS 11-04 — Zone Transfer Berhasil**
+
+> **[TEMPAT SCREENSHOT 11-04]**: `pgrep -a named` di kedua node dan `ls -l` file zona di Shoko.
+
+#### Langkah 6 — Query `dig` ke Master dan Slave dari Client
+
+**Console perangkat: Itadori**
+
+```bash
+dig @192.225.1.2 jujutsu.k28.com SOA
+dig @192.225.1.3 jujutsu.k28.com SOA
+```
+
+**Hasil yang diharapkan:** keduanya `status: NOERROR` dengan flag `aa` dan serial `2026101502`.
+
+**SS 11-05 — Query SOA Master dan Slave**
+
+> **[TEMPAT SCREENSHOT 11-05]**: output kedua `dig`.
+
+#### Langkah 7 — Menguji Sinkronisasi Serial
+
+**Console perangkat: Utahime**
+
+Naikkan serial menjadi `2026101503` lalu reload:
+
+```bash
+nano /etc/bind/zones/db.jujutsu.k28.com
+named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
+rndc reload jujutsu.k28.com || kill -HUP "$(pgrep -xo named)"
+```
+
+**Console perangkat: Itadori**
+
+```bash
+dig @192.225.1.2 jujutsu.k28.com SOA +short
+dig @192.225.1.3 jujutsu.k28.com SOA +short
+```
+
+**Hasil yang diharapkan:** serial pada Master dan Slave sama-sama `2026101503`.
+
+**SS 11-06 — Serial Tersinkronisasi**
+
+> **[TEMPAT SCREENSHOT 11-06]**: output `dig +short` kedua server dengan serial baru.
+
+### Catatan Pengujian Ulang
+
+Setiap perubahan zona harus disertai kenaikan serial, kalau tidak Slave tidak menyalin ulang. Jangan menjalankan `named -u bind` jika proses sudah ada; cukup reload.
+
+### Kesimpulan
+
+DNS Master (Utahime) dan Slave (Shoko) berhasil dikonfigurasi untuk `jujutsu.k28.com`. Zone transfer berjalan dan kenaikan serial pada Master otomatis tersalin ke Slave, terbukti dari query `dig` ke kedua server.
+
+### Otomatisasi Pengujian Menggunakan Script
+
+#### Script DNS Master pada Utahime
+
+**Cara membuat script**
+
+Pada console Utahime, buat file `/root/soal11_master.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal11_master.sh
+```
+
+```bash
+chmod +x /root/soal11_master.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal11_master.sh
+```
+
+**Fungsi:** memasang BIND9, membuat zona Master beserta file zona, memvalidasi, lalu me-reload `named`.
+
+#### Script DNS Slave pada Shoko
+
+**Cara membuat script**
+
+Pada console Shoko, buat file `/root/soal11_slave.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal11_slave.sh
+```
+
+```bash
+chmod +x /root/soal11_slave.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal11_slave.sh
+```
+
+**Fungsi:** memasang BIND9 dan mendaftarkan zona Slave yang mengambil data dari Utahime.
+
+#### Script Pengujian pada Itadori
+
+**Cara membuat script**
+
+Pada console Itadori, buat file `/root/soal11-test.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal11-test.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+sh /root/soal11-test.sh
+```
+
+**Fungsi:** menjalankan `dig` SOA dan A record ke Master dan Slave.
+
+**SS 11-07 — Output Script Soal 11**
+
+> **[TEMPAT SCREENSHOT 11-07]**: hasil script Master, Slave, dan pengujian client.
+
+#### Urutan Menjalankan Script untuk Demonstrasi
+
+1. **Utahime:** `bash /root/soal11_master.sh`
+2. **Shoko:** `bash /root/soal11_slave.sh`
+3. **Itadori:** `sh /root/soal11-test.sh`
+
+---
+# Soal 12
+## A Record, CNAME, Reverse DNS, dan DNS Forwarder
+
+Peta domain harus memetakan pintu masuk utama ke Gojo dan tetap bisa mencari alamat di luar Shibuya. Pada Utahime dibuat A record `jujutsu.k28.com` ke Gojo, CNAME `www`, zona PTR untuk IP Gojo, serta forwarder ke `192.168.122.1`. Hasilnya diuji dari client dengan `dig` (CNAME dan PTR) dan `ping google.com`.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Menambahkan A Record dan CNAME
+
+**Console perangkat: Utahime**
+
+```bash
+nano /etc/bind/zones/db.jujutsu.k28.com
+```
+
+Naikkan serial menjadi `2026101504` dan tambahkan:
+
+```dns
+@    IN A     <IP-Gojo>
+www  IN CNAME jujutsu.k28.com.
+```
+
+**Hasil yang diharapkan:** zona valid saat dicek `named-checkzone`.
+
+**SS 12-01 — Isi File Zona**
+
+> **[TEMPAT SCREENSHOT 12-01]**: `cat /etc/bind/zones/db.jujutsu.k28.com`.
+
+#### Langkah 2 — Membuat Zona Reverse (PTR)
+
+**Console perangkat: Utahime**
+
+Tambahkan ke `/etc/bind/named.conf.local`:
+
+```conf
+zone "1.225.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.192.225.1";
+    allow-transfer { 192.225.1.3; };
+    also-notify { 192.225.1.3; };
+};
+```
+
+Buat `/etc/bind/zones/db.192.225.1`:
+
+```dns
+$TTL 604800
+@   IN  SOA ns1.jujutsu.k28.com. admin.jujutsu.k28.com. (
+        2026101501 604800 86400 2419200 604800 )
+@   IN  NS  ns1.jujutsu.k28.com.
+@   IN  NS  ns2.jujutsu.k28.com.
+<oktet-akhir-Gojo> IN PTR jujutsu.k28.com.
+```
+
+**SS 12-02 — Zona Reverse**
+
+> **[TEMPAT SCREENSHOT 12-02]**: `cat /etc/bind/zones/db.192.225.1` dan blok zona reverse di `named.conf.local`.
+
+#### Langkah 3 — Mengaktifkan DNS Forwarder
+
+**Console perangkat: Utahime**
+
+```bash
+nano /etc/bind/named.conf.options
+```
+
+Pastikan di dalam blok `options` ada:
+
+```conf
+forwarders { 192.168.122.1; };
+dnssec-validation no;
+allow-recursion { any; };
+```
+
+#### Langkah 4 — Validasi dan Reload
+
+**Console perangkat: Utahime**
+
+```bash
+named-checkconf
+named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
+named-checkzone 1.225.192.in-addr.arpa /etc/bind/zones/db.192.225.1
+rndc reload || kill -HUP "$(pgrep -xo named)"
+```
+
+**Hasil yang diharapkan:** semua pengecekan `OK`.
+
+**SS 12-03 — Validasi dan Reload**
+
+> **[TEMPAT SCREENSHOT 12-03]**: output ketiga validasi.
+
+#### Langkah 5 — Menguji A, CNAME, dan PTR dari Client
+
+**Console perangkat: Itadori**
+
+```bash
+dig @192.225.1.2 jujutsu.k28.com A +short
+dig @192.225.1.2 www.jujutsu.k28.com CNAME +short
+dig @192.225.1.2 -x <IP-Gojo> +short
+```
+
+**Hasil yang diharapkan:** A mengarah ke Gojo, CNAME ke `jujutsu.k28.com.`, dan PTR kembali ke `jujutsu.k28.com.`.
+
+**SS 12-04 — Hasil dig A, CNAME, PTR**
+
+> **[TEMPAT SCREENSHOT 12-04]**: output ketiga `dig`.
+
+#### Langkah 6 — Menguji Forwarder ke Internet
+
+**Console perangkat: Itadori**
+
+```bash
+dig @192.225.1.2 google.com +short
+ping -c 3 google.com
+```
+
+**Hasil yang diharapkan:** `google.com` ter-resolve dan ping berhasil.
+
+**SS 12-05 — Ping google.com**
+
+> **[TEMPAT SCREENSHOT 12-05]**: output `dig` dan `ping google.com`.
+
+### Catatan Pengujian Ulang
+
+Naikkan serial setiap mengubah zona agar Shoko ikut tersinkron. Ping domain internet hanya berhasil jika NAT Jichi aktif dan client memakai Utahime/Shoko sebagai DNS.
+
+### Kesimpulan
+
+Utahime berhasil memetakan `jujutsu.k28.com` dan `www` ke Gojo, menyediakan PTR untuk IP Gojo, serta meneruskan query eksternal ke `192.168.122.1`. Client dapat meresolusi CNAME, PTR, dan tetap menjangkau `google.com`.
+
+### Otomatisasi Pengujian Menggunakan Script
+
+#### Script DNS pada Utahime
+
+**Cara membuat script**
+
+Pada console Utahime, buat file `/root/soal12_dns.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal12_dns.sh
+```
+
+```bash
+chmod +x /root/soal12_dns.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal12_dns.sh
+```
+
+**Fungsi:** menambah A, CNAME, zona PTR, dan forwarder, lalu memvalidasi dan me-reload BIND9.
+
+**SS 12-06 — Output Script Soal 12**
+
+> **[TEMPAT SCREENSHOT 12-06]**: hasil `bash /root/soal12_dns.sh`.
+
+#### Urutan Menjalankan Script untuk Demonstrasi
+
+1. **Utahime:** `bash /root/soal12_dns.sh`
+2. **Itadori:** jalankan `dig` A, CNAME, PTR, lalu `ping google.com`.
+
+---
+# Soal 13
+## Replikasi MariaDB Master-Slave (Yaga dan Inumaki)
+
+Database terpusat yang redundan dibangun agar log aktivitas tetap aman. MariaDB pada Yaga menjadi Master dengan binary logging, sedangkan Inumaki menjadi Slave lewat `CHANGE MASTER TO`. Replikasi dibuktikan dengan memasukkan data di Master dan memeriksanya di Slave.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memasang MariaDB
+
+**Console perangkat: Yaga dan Inumaki**
+
+```bash
+apt-get update
+apt-get install -y mariadb-server
+```
+
+#### Langkah 2 — Mengaktifkan Binary Log di Master
+
+**Console perangkat: Yaga**
+
+```bash
+nano /etc/mysql/mariadb.conf.d/50-server.cnf
+```
+
+Pada bagian `[mysqld]` isi:
+
+```ini
+bind-address = 0.0.0.0
+server-id    = 1
+log-bin      = /var/log/mysql/mysql-bin.log
+```
+
+Jalankan ulang service:
+
+```bash
+mkdir -p /var/log/mysql && chown mysql:mysql /var/log/mysql
+service mariadb restart
+```
+
+**SS 13-01 — Konfigurasi Master**
+
+> **[TEMPAT SCREENSHOT 13-01]**: baris `bind-address`, `server-id`, `log-bin` di Yaga.
+
+#### Langkah 3 — Membuat Database, Tabel, dan User
+
+**Console perangkat: Yaga**
+
+```bash
+mariadb
+```
+
+```sql
+CREATE DATABASE db_shibuya_K28;
+USE db_shibuya_K28;
+CREATE TABLE request_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  hostname VARCHAR(100),
+  client_ip VARCHAR(45),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE USER 'repl'@'192.225.4.%' IDENTIFIED BY '<password>';
+GRANT REPLICATION SLAVE ON *.* TO 'repl'@'192.225.4.%';
+CREATE USER 'app'@'192.225.4.%' IDENTIFIED BY '<password>';
+GRANT ALL ON db_shibuya_K28.* TO 'app'@'192.225.4.%';
+FLUSH PRIVILEGES;
+SHOW MASTER STATUS;
+```
+
+**Hasil yang diharapkan:** `SHOW MASTER STATUS` menampilkan `File` dan `Position`; catat keduanya. User `app` memberi akses remote bagi seluruh node Network 4.
+
+**SS 13-02 — Status Master**
+
+> **[TEMPAT SCREENSHOT 13-02]**: output `SHOW MASTER STATUS` dan `SHOW TABLES`.
+
+#### Langkah 4 — Mengonfigurasi Slave
+
+**Console perangkat: Inumaki**
+
+```bash
+nano /etc/mysql/mariadb.conf.d/50-server.cnf
+```
+
+Isi pada `[mysqld]`: `server-id = 2` dan `bind-address = 0.0.0.0`, lalu `service mariadb restart`.
+
+**SS 13-03 — Konfigurasi Slave**
+
+> **[TEMPAT SCREENSHOT 13-03]**: baris `server-id` di Inumaki.
+
+#### Langkah 5 — Menghubungkan Slave ke Master
+
+**Console perangkat: Inumaki**
+
+```bash
+mariadb
+```
+
+```sql
+CHANGE MASTER TO
+  MASTER_HOST='<IP-Yaga>',
+  MASTER_USER='repl',
+  MASTER_PASSWORD='<password>',
+  MASTER_LOG_FILE='<File-dari-Master>',
+  MASTER_LOG_POS=<Position-dari-Master>;
+START SLAVE;
+SHOW SLAVE STATUS\G
+```
+
+**Hasil yang diharapkan:** `Slave_IO_Running: Yes` dan `Slave_SQL_Running: Yes`.
+
+**SS 13-04 — Status Slave**
+
+> **[TEMPAT SCREENSHOT 13-04]**: output `SHOW SLAVE STATUS\G`.
+
+#### Langkah 6 — Membuktikan Replikasi
+
+**Console perangkat: Yaga**
+
+```sql
+INSERT INTO db_shibuya_K28.request_logs (hostname, client_ip) VALUES ('uji-replikasi','192.225.2.10');
+```
+
+**Console perangkat: Inumaki**
+
+```sql
+SELECT * FROM db_shibuya_K28.request_logs;
+```
+
+**Hasil yang diharapkan:** baris `uji-replikasi` muncul di Slave.
+
+**SS 13-05 — Data Tereplikasi**
+
+> **[TEMPAT SCREENSHOT 13-05]**: INSERT di Yaga dan SELECT di Inumaki.
+
+### Catatan Pengujian Ulang
+
+Jika Slave `No`, baca `Last_IO_Error` pada `SHOW SLAVE STATUS\G` dan cek file/posisi log Master. Setelah node di-restart, pastikan service MariaDB dijalankan kembali (`service mariadb start`).
+
+### Kesimpulan
+
+MariaDB Master (Yaga) dan Slave (Inumaki) berhasil dikonfigurasi dengan database `db_shibuya_K28` dan tabel `request_logs`. Data yang dimasukkan di Master langsung muncul di Slave, sehingga replikasi berjalan.
+
+### Otomatisasi Pengujian Menggunakan Script
+
+#### Script Master pada Yaga
+
+**Cara membuat script**
+
+Pada console Yaga, buat file `/root/soal13_master.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal13_master.sh
+```
+
+```bash
+chmod +x /root/soal13_master.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal13_master.sh
+```
+
+**Fungsi:** mengonfigurasi binary log, membuat database, tabel, serta user replikasi dan remote.
+
+#### Script Slave pada Inumaki
+
+**Cara membuat script**
+
+Pada console Inumaki, buat file `/root/soal13_slave.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal13_slave.sh
+```
+
+```bash
+chmod +x /root/soal13_slave.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal13_slave.sh
+```
+
+**Fungsi:** mengatur `server-id` Slave, menjalankan `CHANGE MASTER TO`, dan memulai replikasi.
+
+**SS 13-06 — Output Script Soal 13**
+
+> **[TEMPAT SCREENSHOT 13-06]**: hasil kedua script.
+
+#### Urutan Menjalankan Script untuk Demonstrasi
+
+1. **Yaga:** `bash /root/soal13_master.sh`
+2. **Inumaki:** `bash /root/soal13_slave.sh`
+3. **Yaga lalu Inumaki:** INSERT di Master, SELECT di Slave.
+
+---
+# Soal 14
+## Worker Frontend dan API dengan Nginx + PHP-FPM
+
+Para worker di Data Center menjadi backend aplikasi. Maki dan Panda menyajikan web frontend yang menampilkan hostname, sedangkan Nanami, Todo, dan Kirara menyediakan API yang mencatat request ke database Yaga. Akses langsung dari client harus ditolak: web worker hanya menerima trafik dari Gojo dan API worker hanya dari Geto.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memasang Nginx dan PHP-FPM
+
+**Console perangkat: Maki, Panda, Nanami, Todo, Kirara**
+
+```bash
+apt-get update
+apt-get install -y nginx php-fpm php-mysql
+```
+
+#### Langkah 2 — Membuat Halaman Frontend
+
+**Console perangkat: Maki dan Panda**
+
+```bash
+cat > /var/www/html/index.php <<'EOF'
+<?php echo "Worker Frontend: " . gethostname(); ?>
+EOF
+```
+
+**Hasil yang diharapkan:** halaman menampilkan hostname masing-masing worker.
+
+#### Langkah 3 — Membuat Endpoint API
+
+**Console perangkat: Nanami, Todo, Kirara**
+
+Buat `/var/www/html/index.php` yang menampilkan hostname dan menyimpan log ke Yaga:
+
+```php
+<?php
+header('Content-Type: application/json');
+$host = gethostname();
+$db = new mysqli('<IP-Yaga>', 'app', '<password>', 'db_shibuya_K28');
+$ip = $_SERVER['REMOTE_ADDR'];
+$stmt = $db->prepare("INSERT INTO request_logs (hostname, client_ip) VALUES (?, ?)");
+$stmt->bind_param('ss', $host, $ip);
+$stmt->execute();
+echo json_encode(['server' => $host, 'status' => 'ok']);
+```
+
+#### Langkah 4 — Virtual Host dan Pembatasan Akses
+
+**Console perangkat: Maki dan Panda**
+
+```nginx
+server {
+    listen 80;
+    server_name jujutsu.k28.com www.jujutsu.k28.com;
+    root /var/www/html;
+    index index.php;
+    allow <IP-Gojo>;
+    deny all;
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php-fpm.sock;
+    }
+}
+```
+
+**Console perangkat: Nanami, Todo, Kirara**
+
+Konfigurasi sama, tetapi `allow <IP-Geto>;`. Jalankan `nginx -t`, mulai PHP-FPM, lalu `service nginx restart`.
+
+**SS 14-01 — Virtual Host Worker**
+
+> **[TEMPAT SCREENSHOT 14-01]**: `cat` vhost di salah satu web worker dan salah satu API worker, plus `nginx -t`.
+
+#### Langkah 5 — Menguji Akses Langsung Ditolak
+
+**Console perangkat: Itadori**
+
+```bash
+curl -I http://<IP-Maki>/
+curl -I http://<IP-Nanami>/
+```
+
+**Hasil yang diharapkan:** `403 Forbidden` (akses langsung dari client ditolak).
+
+**SS 14-02 — Akses Langsung Ditolak**
+
+> **[TEMPAT SCREENSHOT 14-02]**: output kedua `curl` di Itadori.
+
+#### Langkah 6 — Menguji Akses Melalui Proxy
+
+**Console perangkat: Gojo (web) dan Geto (API)**
+
+```bash
+curl -s -H "Host: jujutsu.k28.com" http://<IP-Maki>/
+curl -s -H "Host: jujutsu.k28.com" http://<IP-Nanami>/
+```
+
+**Hasil yang diharapkan:** web membalas hostname Maki/Panda dan API membalas JSON dengan `status: ok`. Pastikan baris baru muncul di `request_logs` Yaga.
+
+**SS 14-03 — Akses Melalui Proxy Berhasil**
+
+> **[TEMPAT SCREENSHOT 14-03]**: output `curl` dari Gojo dan Geto, serta `SELECT` di Yaga.
+
+### Catatan Pengujian Ulang
+
+Jika muncul `502`, periksa PHP-FPM dan path socket (`ls /run/php/`). Jika API gagal menyimpan log, cek koneksi dan user `app` ke Yaga.
+
+### Kesimpulan
+
+Maki dan Panda berhasil menyajikan frontend, sedangkan Nanami, Todo, dan Kirara mencatat request ke database Yaga. Akses langsung client ditolak dan hanya jalur proxy yang diizinkan.
+
+### Otomatisasi Pengujian Menggunakan Script
+
+#### Script Worker
+
+**Cara membuat script**
+
+Pada console Maki, Panda, Nanami, Todo, dan Kirara, buat file `/root/soal14_worker.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal14_worker.sh  (satu per node; isinya bisa berbeda untuk frontend dan API)
+```
+
+```bash
+chmod +x /root/soal14_worker.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal14_worker.sh
+```
+
+**Fungsi:** memasang Nginx dan PHP-FPM, membuat halaman/API, serta virtual host dengan pembatasan akses.
+
+**SS 14-04 — Output Script Soal 14**
+
+> **[TEMPAT SCREENSHOT 14-04]**: hasil script di salah satu web worker dan salah satu API worker.
+
+#### Urutan Menjalankan Script untuk Demonstrasi
+
+1. **Maki, Panda, Nanami, Todo, Kirara:** `bash /root/soal14_worker.sh`
+2. **Itadori:** `curl` langsung ke worker (harus ditolak).
+3. **Gojo dan Geto:** `curl` ke worker (harus berhasil).
+
+---
+# Soal 15
+## Load Balancer Internal pada Geto (Weighted Round Robin 3:1)
+
+Geto mengendalikan pembagian beban request API di Data Center agar server tidak tumbang bersamaan. Nginx pada Geto dikonfigurasi dengan upstream `api_cluster` ke Nanami dan Todo memakai Weighted Round Robin bobot 3:1. Distribusi dibuktikan dengan loop request dari jaringan lokal Data Center dan menghitung rasio responsnya.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memasang Nginx di Geto
+
+**Console perangkat: Geto**
+
+```bash
+apt-get update
+apt-get install -y nginx
+```
+
+#### Langkah 2 — Mengonfigurasi Upstream dan Proxy
+
+**Console perangkat: Geto**
+
+```bash
+nano /etc/nginx/conf.d/api_cluster.conf
+```
+
+Isi:
+
+```nginx
+upstream api_cluster {
+    server <IP-Nanami> weight=3;
+    server <IP-Todo>   weight=1;
+}
+
+server {
+    listen 80;
+    server_name jujutsu.k28.com;
+    location / {
+        proxy_pass http://api_cluster;
+        proxy_set_header Host $host;
+    }
+}
+```
+
+**SS 15-01 — Konfigurasi Load Balancer**
+
+> **[TEMPAT SCREENSHOT 15-01]**: `cat /etc/nginx/conf.d/api_cluster.conf`.
+
+#### Langkah 3 — Validasi dan Menjalankan Nginx
+
+**Console perangkat: Geto**
+
+```bash
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+pgrep -x nginx >/dev/null && nginx -s reload || service nginx start
+```
+
+**Hasil yang diharapkan:** `nginx -t` berstatus `successful`.
+
+**SS 15-02 — Validasi Nginx**
+
+> **[TEMPAT SCREENSHOT 15-02]**: output `nginx -t` dan `pgrep -a nginx`.
+
+#### Langkah 4 — Menguji Rasio Distribusi Beban
+
+**Console perangkat: Tengen** (satu jaringan Data Center dengan Geto)
+
+```bash
+for i in $(seq 1 40); do curl -s http://<IP-Geto>/ ; echo; done | sort | uniq -c
+```
+
+**Hasil yang diharapkan:** Nanami menerima sekitar 30 respons dan Todo sekitar 10 (rasio 3:1).
+
+**SS 15-03 — Rasio Respons 3:1**
+
+> **[TEMPAT SCREENSHOT 15-03]**: output `sort | uniq -c`.
+
+### Catatan Pengujian Ulang
+
+Jika semua respons dari satu worker, periksa apakah worker lain bisa dijangkau dari Geto dan apakah vhost mengizinkan IP Geto. Gunakan jumlah request kelipatan 4 agar rasio mudah dibaca.
+
+### Kesimpulan
+
+Geto berhasil menjadi load balancer internal dengan upstream `api_cluster` dan Weighted Round Robin 3:1. Loop request menunjukkan Nanami menerima beban sekitar tiga kali lipat Todo.
+
+### Otomatisasi Pengujian Menggunakan Script
+
+#### Script Load Balancer pada Geto
+
+**Cara membuat script**
+
+Pada console Geto, buat file `/root/soal15_geto.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal15_geto.sh
+```
+
+```bash
+chmod +x /root/soal15_geto.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal15_geto.sh
+```
+
+**Fungsi:** menulis konfigurasi upstream `api_cluster`, memvalidasi, dan me-reload Nginx.
+
+**SS 15-04 — Output Script Soal 15**
+
+> **[TEMPAT SCREENSHOT 15-04]**: hasil `bash /root/soal15_geto.sh`.
+
+#### Urutan Menjalankan Script untuk Demonstrasi
+
+1. **Geto:** `bash /root/soal15_geto.sh`
+2. **Tengen:** jalankan loop `curl` ke Geto lalu hitung rasio.
