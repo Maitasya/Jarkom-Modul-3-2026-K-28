@@ -22,7 +22,7 @@
 ---
 
 # Soal 1
-## Konfigurasi Interface, Gateway, IPv4 Forwarding, dan Source NAT pada Jichi
+Konfigurasi Interface, Gateway, IPv4 Forwarding, dan Source NAT pada Jichi
 
 Konfigurasikan Jichi agar `eth0` memperoleh WAN dari NAT dan `eth1`–`eth4` menjadi gateway Network 1–4. Aktifkan IPv4 forwarding dan source NAT, tetapkan IP statis host infrastruktur, lalu buktikan konektivitas setiap host ke gateway dan akses eksternal dari host yang relevan.
 
@@ -52,9 +52,9 @@ ip -br a
 
 **Hasil yang diharapkan:** `eth0` memperoleh IP dari NAT, `eth1`–`eth4` berturut-turut `192.225.1.1/24` sampai `192.225.4.1/24`.
 
-**SS 1-01 — IP Interface Jichi**
+<img width="936" height="107" alt="image" src="https://github.com/user-attachments/assets/137ce4ac-6e05-4610-bb55-77266702d5d6" />
 
-> **[TEMPAT SCREENSHOT 1-01]**: output `ip -br a` di Jichi.
+output `ip -br a` di Jichi.
 
 #### Langkah 3 — Mengaktifkan IPv4 Forwarding dan Source NAT
 
@@ -76,9 +76,10 @@ iptables -t nat -L POSTROUTING -v -n
 
 **Hasil yang diharapkan:** nilai forwarding `1` dan ada rule `MASQUERADE` pada `eth0`.
 
-**SS 1-02 — Forwarding dan NAT**
+**Forwarding dan NAT**
 
-> **[TEMPAT SCREENSHOT 1-02]**: output kedua perintah verifikasi.
+<img width="937" height="120" alt="image" src="https://github.com/user-attachments/assets/fe060002-6f4f-413f-b24d-6fcafe51a5a3" />
+output kedua perintah verifikasi.
 
 #### Langkah 4 — Menguji Akses Eksternal dari Jichi
 
@@ -90,9 +91,11 @@ ping -c 3 8.8.8.8
 
 **Hasil yang diharapkan:** `0% packet loss`.
 
-**SS 1-03 — Ping Internet dari Jichi**
+** Ping Internet dari Jichi**
 
-> **[TEMPAT SCREENSHOT 1-03]**: hasil ping `8.8.8.8` dari Jichi.
+<img width="935" height="134" alt="image" src="https://github.com/user-attachments/assets/47341f11-72ec-4a77-b898-85183e178eaf" />
+
+hasil ping `8.8.8.8` dari Jichi.
 
 #### Langkah 5 — Menetapkan IP Statis Host Infrastruktur
 
@@ -115,9 +118,6 @@ echo "nameserver 192.168.122.1" > /etc/resolv.conf
 | Gojo | `<isi>/24` | `192.225.1.1` |
 | Tengen | `192.225.4.10/24` | `192.225.4.1` |
 
-**SS 1-04 — IP Statis Host**
-
-> **[TEMPAT SCREENSHOT 1-04]**: `ip -br a` dan `ip route` di Tengen, Utahime, Shoko, dan Gojo (satu SS per node).
 
 #### Langkah 6 — Menguji Konektivitas Host ke Gateway dan Internet
 
@@ -129,10 +129,6 @@ ping -c 3 8.8.8.8
 ```
 
 **Hasil yang diharapkan:** ping gateway dan `8.8.8.8` berhasil.
-
-**SS 1-05 — Konektivitas Host**
-
-> **[TEMPAT SCREENSHOT 1-05]**: hasil ping gateway dan `8.8.8.8` dari tiap host.
 
 ### Catatan Pengujian Ulang
 
@@ -151,7 +147,46 @@ Jichi berhasil dikonfigurasi sebagai router dengan gateway Network 1–4, IPv4 f
 Pada console Jichi, buat file `/root/soal1_jichi.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal1_jichi.sh
+#!/bin/bash
+set -e
+
+echo "=== SOAL 1: KONFIGURASI ROUTER JICHI ==="
+
+# Aktifkan seluruh interface
+for iface in eth0 eth1 eth2 eth3 eth4; do
+    ip link set "$iface" up
+done
+
+# Konfigurasi gateway setiap jaringan LAN
+ip addr replace 192.225.1.1/24 dev eth1
+ip addr replace 192.225.2.1/24 dev eth2
+ip addr replace 192.225.3.1/24 dev eth3
+ip addr replace 192.225.4.1/24 dev eth4
+
+# Aktifkan IPv4 forwarding
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+# Pertahankan forwarding setelah konfigurasi sistem dimuat ulang
+grep -q '^net.ipv4.ip_forward=1' /etc/sysctl.conf ||
+    echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+
+# NAT untuk koneksi LAN menuju WAN
+iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null ||
+    iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+echo "=== VERIFIKASI INTERFACE ==="
+ip -br addr
+
+echo "=== VERIFIKASI ROUTING ==="
+ip route
+
+echo "=== VERIFIKASI IP FORWARDING ==="
+cat /proc/sys/net/ipv4/ip_forward
+
+echo "=== VERIFIKASI NAT ==="
+iptables -t nat -L POSTROUTING -n -v
+
+echo "=== SOAL 1 SELESAI ==="
 ```
 
 Berikan izin eksekusi:
@@ -166,11 +201,11 @@ chmod +x /root/soal1_jichi.sh
 bash /root/soal1_jichi.sh
 ```
 
-**Output yang diharapkan:** `<isi sesuai output aslimu>`
+**Output yang diharapkan:** `
 
-**SS 1-06 — Output Script Soal 1**
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/a18f0080-5d8c-4dc5-9e55-6aa5fc0b0934" />
 
-> **[TEMPAT SCREENSHOT 1-06]**: hasil `bash /root/soal1_jichi.sh`.
+hasil `bash /root/soal1_jichi.sh`.
 
 #### Script IP Statis Host
 
@@ -181,27 +216,23 @@ bash /root/soal1_jichi.sh
 | Shoko | `/root/init.sh` | `bash /root/init.sh` |
 | Gojo | `/root/konfig_gojo.sh` | `bash /root/konfig_gojo.sh` |
 
-```bash
-# TEMPEL ISI: cat /root/init.sh  (Tengen)
-```
+**Output Script Host**
 
-```bash
-# TEMPEL ISI: cat /root/init.sh  (Utahime)
-```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/3aeac602-e096-4cfa-96b3-ce40a8b42806" />
 
-```bash
-# TEMPEL ISI: cat /root/init.sh  (Shoko)
-```
+hasil script di tiap host.
 
-```bash
-# TEMPEL ISI: cat /root/konfig_gojo.sh
-```
+hasil ping 8.8.8.8
 
-**SS 1-07 — Output Script Host**
+<img width="936" height="131" alt="image" src="https://github.com/user-attachments/assets/d98f553f-29f7-4ffe-874d-7132995d00ef" />
 
-> **[TEMPAT SCREENSHOT 1-07]**: hasil script di tiap host.
 
-**Urutan Demo:** (1) Jichi: `bash /root/soal1_jichi.sh`, (2) tiap host: jalankan script IP, (3) tiap host: ping gateway dan `8.8.8.8`.
+**Urutan Demo:** 
+(1) Jichi: `bash /root/soal1_jichi.sh`, 
+
+(2) tiap host: jalankan script IP, 
+
+(3) tiap host: ping gateway dan `8.8.8.8`.
 
 ---
 
