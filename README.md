@@ -1124,7 +1124,7 @@ hasil:
 
 ---
 ### Soal 6
-## DHCP Static Lease untuk Kugisaki
+DHCP Static Lease untuk Kugisaki
 
 Konfigurasikan DHCP Static Lease untuk client Kugisaki berdasarkan MAC address agar selalu memperoleh IP `192.225.3.99`. Pastikan alamat tersebut berada di luar rentang IP dinamis dan konfigurasi DHCP server valid. Lakukan pengujian untuk membuktikan bahwa Kugisaki memperoleh IP reservasi melalui DHCP server Tengen dengan bantuan DHCP relay pada Jichi.
 
@@ -1168,7 +1168,7 @@ host kugisaki {
 
 Alamat `192.225.3.99` berada di luar pool dinamis `192.225.3.10–192.225.3.89` dan `192.225.3.100–192.225.3.199`.
 
-**SS 6-01 — Konfigurasi Static Lease**
+**Konfigurasi Static Lease**
 <img width="960" height="504" alt="SS 1 — Konfigurasi Static Lease" src="https://github.com/user-attachments/assets/db9f10b3-7d64-46e6-9401-428e0e60c660" />
 
 #### Langkah 3 — Memvalidasi Konfigurasi DHCP
@@ -1183,7 +1183,7 @@ dhcpd -t -cf /etc/dhcp/dhcpd.conf
 
 **Hasil yang diharapkan:** konfigurasi berhasil diperiksa tanpa pesan kesalahan sintaks.
 
-**SS 6-02 — Validasi DHCP**
+**Validasi DHCP**
 
 <img width="959" height="200" alt="SS 2 — Validasi Konfigurasi DHCP" src="https://github.com/user-attachments/assets/5496074c-d12e-487c-a344-5687962e9f09" />
 
@@ -1205,7 +1205,7 @@ Status of ISC DHCPv4 server: dhcpd is running.
 
 Hasil tersebut menunjukkan bahwa layanan DHCP server sedang berjalan.
 
-**SS 6-03 — Status Server**
+**Status Server**
 
 <img width="959" height="74" alt="SS 3 — DHCP Server Aktif" src="https://github.com/user-attachments/assets/28127987-a512-4176-a80b-2c724f86b1eb" />
 
@@ -1229,7 +1229,7 @@ dhcrelay -i eth3 -i eth4 192.225.4.10
 
 Biarkan console tetap terbuka jika relay berjalan di foreground. **Jangan menjalankan perintah tersebut kembali jika relay sudah aktif**, untuk menghindari proses relay ganda.
 
-**SS 6-04 — DHCP Relay**
+**DHCP Relay**
 
 <img width="960" height="504" alt="SS 4 — DHCP Relay di Jichi" src="https://github.com/user-attachments/assets/058674a3-eb2d-47b8-9b78-dcf48a8208d4" />
 
@@ -1252,7 +1252,7 @@ udhcpc: lease of 192.225.3.99 obtained from 192.225.4.10, lease time 43200
 
 Hasil tersebut menunjukkan bahwa Kugisaki berhasil mendapatkan IP reservasi dari DHCP server Tengen.
 
-**SS 6-05 — Client Mendapatkan IP**
+**Client Mendapatkan IP**
 
 <img width="960" height="504" alt="SS 5 — Kugisaki Berhasil Mendapatkan IP" src="https://github.com/user-attachments/assets/e4f3fb55-4404-484e-b7c1-6434b83468a4" />
 
@@ -1281,10 +1281,9 @@ default via 192.225.3.1 dev eth0 metric 70858
 
 Hasil tersebut membuktikan bahwa IP reservasi terpasang pada interface `eth0` dan gateway mengarah ke `192.225.3.1`.
 
-**SS 6-06 — Verifikasi IP dan Route**
+**Verifikasi IP dan Route**
 
 <img width="960" height="504" alt="SS 6 — Verifikasi IP dan Gateway" src="https://github.com/user-attachments/assets/7c7a3ded-1918-46d0-917b-d6f628ea54e8" />
-
 
 ### Catatan Pengujian Ulang
 
@@ -1303,68 +1302,6 @@ Jika relay sudah aktif, tidak perlu menjalankan perintah `dhcrelay` kembali. Pen
 Konfigurasi DHCP Static Lease untuk Kugisaki berhasil dilakukan berdasarkan MAC address `02:42:51:c8:03:00` dengan IP tetap `192.225.3.99`. DHCP server Tengen berhasil memberikan lease melalui DHCP relay pada Jichi. Keberhasilan dibuktikan melalui output `udhcpc`, alamat IP pada interface `eth0`, serta gateway `192.225.3.1`.
 
 ### Otomatisasi Pengujian DHCP Static Lease Menggunakan Script
-
-####  Script DHCP Server pada Tengen
-
-**Cara membuat script**
-
-Pada console Tengen, buat file `/root/soal6-server.sh` menggunakan perintah:
-
-```bash
-#!/bin/bash
-
-echo "=================================="
-echo " DEMO SOAL 6 - DHCP SERVER TENGEN"
-echo "=================================="
-
-CONFIG="/etc/dhcp/dhcpd.conf"
-
-if [ ! -f "$CONFIG" ]; then
-    echo "ERROR: File konfigurasi DHCP tidak ditemukan."
-    exit 1
-fi
-
-echo
-echo "[1] Konfigurasi static lease Kugisaki:"
-grep -A 8 'host kugisaki' "$CONFIG"
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Konfigurasi host Kugisaki tidak ditemukan."
-    exit 1
-fi
-
-echo
-echo "[2] Validasi konfigurasi DHCP:"
-if ! dhcpd -t -cf "$CONFIG"; then
-    echo "ERROR: Konfigurasi DHCP tidak valid."
-    exit 1
-fi
-
-echo
-echo "[3] Memastikan DHCP server berjalan:"
-service isc-dhcp-server start
-
-echo
-echo "[4] Status DHCP server:"
-service isc-dhcp-server status
-
-echo
-echo "Pemeriksaan Tengen selesai."
-```
-
-Berikan izin eksekusi:
-
-```bash
-chmod +x /root/soal6-server.sh
-```
-
-**Cara menjalankan script**
-
-```bash
-/root/soal6-server.sh
-```
-
-**Fungsi:** memeriksa konfigurasi static lease Kugisaki, memvalidasi konfigurasi DHCP, memastikan layanan DHCP server berjalan, dan menampilkan status layanan.
 
 #### Script DHCP Relay pada Jichi
 
@@ -1410,6 +1347,8 @@ chmod +x /root/soal6-relay.sh
 ```bash
 /root/soal6-relay.sh
 ```
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/ed4ad1de-4f56-4024-af19-4da9b3e14eb0" />
 
 **Fungsi:** memeriksa proses DHCP relay pada Jichi dan menjalankannya jika belum terdeteksi aktif. Pemeriksaan ini membantu menghindari pembuatan proses relay baru ketika proses sebelumnya masih berjalan.
 
@@ -1486,19 +1425,20 @@ chmod +x /root/soal6-client.sh
 /root/soal6-client.sh
 ```
 
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/8ff1d3f8-f4d9-4ad2-89fc-fc3d2cd0b3d9" />
+
 **Fungsi:** meminta lease DHCP melalui interface `eth0`, memeriksa IP yang diperoleh, dan memverifikasi gateway. Pengujian dinyatakan berhasil jika Kugisaki memperoleh IP `192.225.3.99` dan gateway `192.225.3.1`.
 
 ####  Urutan Menjalankan Script untuk Demonstrasi
 
 Script dijalankan melalui console masing-masing perangkat dengan urutan berikut:
 
-1. **Tengen:** jalankan `/root/soal6-server.sh` untuk memvalidasi konfigurasi dan memastikan DHCP server aktif.
-2. **Jichi:** jalankan `/root/soal6-relay.sh` untuk memeriksa serta memastikan DHCP relay aktif.
-3. **Kugisaki:** jalankan `/root/soal6-client.sh` untuk meminta IP reservasi dan memverifikasi alamat IP serta gateway.
+1. **Jichi:** jalankan `/root/soal6-relay.sh` untuk memeriksa serta memastikan DHCP relay aktif.
+2. **Kugisaki:** jalankan `/root/soal6-client.sh` untuk meminta IP reservasi dan memverifikasi alamat IP serta gateway.
 
 ---
 ### Soal 7
-## Konfigurasi DHCP Server dan DHCP Relay
+Konfigurasi DHCP Server dan DHCP Relay
 
 Konfigurasikan DHCP server pada Tengen untuk membagikan alamat IP kepada client Divisi A dan Divisi B melalui DHCP relay pada Jichi. Atur rentang IP, gateway, DNS, domain pencarian, serta static lease untuk Kugisaki dengan IP `192.225.3.99`. Lakukan pengujian untuk memastikan delapan client memperoleh IP sesuai subnet dan konfigurasi jaringan yang ditentukan.
 
@@ -1517,7 +1457,7 @@ ip route
 
 **Hasil yang diharapkan:** interface `eth0` memiliki IP `192.225.4.10/24` dan default gateway `192.225.4.1`.
 
-**SS 7-01 — IP dan Routing Tengen**
+**IP dan Routing Tengen**
 
 <img width="959" height="108" alt="IP Tengen dan routing soal7" src="https://github.com/user-attachments/assets/a6cdd139-7688-47d3-86e4-513987ecaa42" />
 
@@ -1533,7 +1473,7 @@ cat /etc/dhcp/dhcpd.conf
 
 **Hasil yang diharapkan:** konfigurasi mencakup subnet Divisi A dan B, rentang IP dinamis, gateway, DNS `192.225.1.2` dan `192.225.1.3`, serta static lease Kugisaki dengan IP `192.225.3.99`.
 
-**SS 7-02 — Konfigurasi DHCP Server**
+**Konfigurasi DHCP Server**
 
 <img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/345b6909-c084-4e61-ad88-f5f46f2b6b3e" />
 
@@ -1555,7 +1495,7 @@ service isc-dhcp-server status
 
 **Hasil yang diharapkan:** konfigurasi valid dan layanan DHCP server berstatus berjalan.
 
-**SS 7-03 — Validasi dan Status DHCP Server**
+**Validasi dan Status DHCP Server**
 
 <img width="960" height="516" alt="Konfigurasi DHCP server soal7" src="https://github.com/user-attachments/assets/bdc0908b-0080-4e42-9769-eb1d2398b1aa" />
 
@@ -1580,7 +1520,7 @@ Biarkan terminal tetap terbuka selama pengujian client.
 
 **Hasil yang diharapkan:** DHCP relay berjalan dan meneruskan permintaan client menuju server Tengen `192.225.4.10`.
 
-**SS 7-04 — DHCP Relay pada Jichi**
+**DHCP Relay pada Jichi**
 
 <img width="960" height="516" alt="DHCP relay di Jichi soal 7" src="https://github.com/user-attachments/assets/79912c3c-3505-4062-91af-6c9dd475e121" />
 
@@ -1611,7 +1551,7 @@ udhcpc -i eth0 -n -q
 
 **Screenshot dan keterangannya:**
 
-- **SS 7-05 — DHCP Client Divisi A.** Tampilkan hasil pemberian IP Itadori, Fushiguro, Zenin, dan Okkotsu.
+- **DHCP Client Divisi A.** Tampilkan hasil pemberian IP Itadori, Fushiguro, Zenin, dan Okkotsu.
   
   1. Itadori
      
@@ -1667,7 +1607,7 @@ cat /etc/resolv.conf
 
 **Hasil aktual yang diperoleh:** Okkotsu menggunakan IP `192.225.2.10/24`, gateway `192.225.2.1`, domain pencarian `K28.com`, serta DNS `192.225.1.2` dan `192.225.1.3`.
 
-**SS 7-07 — Verifikasi Gateway, DNS, dan Domain Pencarian**
+**Verifikasi Gateway, DNS, dan Domain Pencarian**
 
 <img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/42d1b8cd-0d36-4c14-831d-0dc9f72a942d" />
 
@@ -1689,7 +1629,7 @@ ping -c 4 192.225.3.1
 
 **Hasil yang diharapkan:** seluruh paket berhasil diterima dari gateway Jichi `192.225.3.1`.
 
-**SS 7-08 — Pengujian Konektivitas Gateway**
+**Pengujian Konektivitas Gateway**
 
 <img width="960" height="516" alt="Ping gateway berhasil soal 7" src="https://github.com/user-attachments/assets/5d5e0831-df6e-4d39-83b3-6f7a053fde92" />
 
@@ -1707,7 +1647,7 @@ Konfigurasi DHCP server pada Tengen dan DHCP relay pada Jichi berhasil diterapka
 
 **Cara membuat script**
 
-Pada console Tengen, buat file `/root/soal7-server.sh` menggunakan perintah:
+Pada console Tengen, buat file `/root/soal7_server.sh` menggunakan perintah:
 
 ```bash
 #!/bin/bash
@@ -1736,14 +1676,16 @@ echo "===== KONFIGURASI DHCP SELESAI DIPERIKSA ====="
 Berikan izin eksekusi:
 
 ```bash
-chmod +x /root/soal7-server.sh
+chmod +x /root/soal7_server.sh
 ```
 
 **Cara menjalankan script**
 
 ```bash
-/root/soal7-server.sh
+/root/soal7_server.sh
 ```
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/571624a7-5023-4dbc-822b-72c8c8e73a3f" />
 
 **Fungsi:** memeriksa keberadaan file konfigurasi DHCP, memvalidasi konfigurasi menggunakan `dhcpd -t`, memastikan layanan DHCP server berjalan, dan menampilkan status layanan.
 
@@ -1798,7 +1740,7 @@ chmod +x /root/soal7-relay.sh
 
 **Cara membuat script**
 
-Pada console masing-masing klien, buat file `/root/soal7-client.sh` menggunakan perintah:
+Pada console masing-masing klien, buat file `/root/soal7_klien.sh` menggunakan perintah:
 
 ```bash
 #!/bin/sh
@@ -1850,14 +1792,15 @@ echo "===== PENGUJIAN KLIEN SELESAI ====="
 Berikan izin eksekusi:
 
 ```bash
-chmod +x /root/soal7-client.sh
+chmod +x /root/soal7_klien.sh
 ```
 
 **Cara menjalankan script**
 
 ```bash
-/root/soal7-client.sh
+/root/soal7_klien.sh
 ```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/b63439af-5a80-472f-bcab-7a8bc7334707" />
 
 Jalankan script pada setiap klien: Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusakabe, Miwa, dan Kugisaki.
 
@@ -1867,7 +1810,7 @@ Jalankan script pada setiap klien: Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusa
 
 **Cara membuat script**
 
-Pada console Tengen, buat file `/root/soal7-cek-server.sh` menggunakan perintah:
+Pada console Tengen, buat file `/root/soal7_cek_server.sh` menggunakan perintah:
 
 ```bash
 #!/bin/bash
@@ -1906,14 +1849,16 @@ echo "===== VERIFIKASI SELESAI ====="
 Berikan izin eksekusi:
 
 ```bash
-chmod +x /root/soal7-cek-server.sh
+chmod +x /root/soal7_cek_server.sh
 ```
 
 **Cara menjalankan script**
 
 ```bash
-/root/soal7-cek-server.sh
+/root/soal7_cek_server.sh
 ```
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/fde89e87-89fd-4665-aa32-5a47328b82fe" />
 
 **Fungsi:** menampilkan alamat IP server, routing, daftar lease yang tercatat, dan status layanan DHCP server untuk membantu verifikasi hasil pengujian.
 
@@ -1921,17 +1866,17 @@ chmod +x /root/soal7-cek-server.sh
 
 Script dijalankan melalui console masing-masing perangkat dengan urutan berikut:
 
-1. **Tengen:** jalankan `/root/soal7-server.sh` untuk memvalidasi konfigurasi dan memastikan DHCP server aktif.
-2. **Jichi:** jalankan `/root/soal7-relay.sh` untuk memastikan DHCP relay berjalan. Biarkan terminal tetap terbuka selama pengujian.
-3. **Klien Divisi A dan Divisi B:** jalankan `/root/soal7-client.sh` pada setiap klien untuk meminta alamat IP, memeriksa gateway, dan menguji koneksi.
-4. **Tengen:** jalankan `/root/soal7-cek-server.sh` untuk memeriksa lease yang tercatat pada DHCP server.
+1. **Tengen:** jalankan `/root/soal7_server.sh` untuk memvalidasi konfigurasi dan memastikan DHCP server aktif.
+2. **Jichi:** jalankan `/root/soal7_relay.sh` untuk memastikan DHCP relay berjalan. Biarkan terminal tetap terbuka selama pengujian.
+3. **Klien Divisi A dan Divisi B:** jalankan `/root/soal7_klien.sh` pada setiap klien untuk meminta alamat IP, memeriksa gateway, dan menguji koneksi.
+4. **Tengen:** jalankan `/root/soal7_cek_server.sh` untuk memeriksa lease yang tercatat pada DHCP server.
 
 Script ini dijalankan pada perangkat masing-masing, bukan seluruhnya dari satu console. Jika DHCP relay sudah berjalan, script tidak membuat proses relay baru. Untuk menghindari gangguan, jangan menghentikan relay selama pengujian klien berlangsung.
 
 ---
 
 # Soal 8
-## Packet Capture Proses DHCP Menggunakan tcpdump
+Packet Capture Proses DHCP Menggunakan tcpdump
 
 Lakukan packet capture saat client Network 2 atau Network 3 meminta lease baru. Gunakan `tcpdump` pada Tengen untuk membuktikan urutan DHCPDISCOVER → DHCPOFFER → DHCPREQUEST → DHCPACK, serta mengidentifikasi alamat server, alamat IP client, lease time, dan `giaddr` yang sesuai dengan interface Jichi.
 
@@ -1955,7 +1900,7 @@ dhcrelay -d -i eth2 -i eth3 -i eth4 192.225.4.10
 
 Pastikan `eth2` terhubung ke Network 2, `eth3` ke Network 3, dan `eth4` ke Data Center. Biarkan relay aktif selama pengujian dan jangan menjalankan proses relay ganda.
 
-**SS 8-01 — DHCP Relay Aktif di Jichi**
+**DHCP Relay Aktif di Jichi**
 
 <img width="960" height="516" alt="Soal8 Relay aktif di Jichi" src="https://github.com/user-attachments/assets/8b0e66c6-4962-4bdc-93f8-9cd76bbfd322" />
 
@@ -1978,7 +1923,7 @@ grep -n "range" /etc/dhcp/dhcpd.conf
 
 Hasil yang diharapkan: DHCP Server aktif dan interface `eth0` memiliki alamat `192.225.4.10/24`.
 
-**SS 8-02 — DHCP Server Aktif di Tengen**
+**DHCP Server Aktif di Tengen**
 
 <img width="960" height="516" alt="Soal8 DHCP server aktif di Tengen  " src="https://github.com/user-attachments/assets/eabb4325-ee9a-4c80-b03d-5d8e069015e3" />
 
@@ -2000,9 +1945,6 @@ Tunggu hingga muncul instruksi:
 
 Instruksi tersebut menandakan bahwa client harus segera meminta lease baru agar paket DHCP tertangkap.
 
-**SS 8-03 — Packet Capture Siap pada Tengen**
-
-
 ### Langkah 4 — Meminta Lease Baru dari Itadori
 
 **Konsol perangkat: Itadori**
@@ -2023,7 +1965,7 @@ lease of 192.225.2.10 obtained from 192.225.4.10
 
 Itadori berhasil memperoleh IP `192.225.2.10` dari DHCP Server `192.225.4.10`. Alamat tersebut termasuk Pool 1 Network 2, yaitu `192.225.2.10–192.225.2.35`.
 
-**SS 8-04 — Itadori Berhasil Mendapatkan Lease DHCP**
+**Itadori Berhasil Mendapatkan Lease DHCP**
 
 <img width="960" height="516" alt="Soal8 SS 8-03 (Itadori)" src="https://github.com/user-attachments/assets/551519be-b031-47e7-ac39-0e26ee76fca3" />
 
@@ -2047,7 +1989,7 @@ DHCP-Message (53), length 1: ACK
 
 Capture menunjukkan urutan DHCPDISCOVER, DHCPOFFER, DHCPREQUEST, dan DHCPACK. Keempat pesan memiliki transaction ID (`xid`) yang sama, yaitu `0x27a4ce0e`.
 
-**SS 8-05 — Urutan Paket DHCP**
+**Urutan Paket DHCP**
 
 <img width="960" height="516" alt="soal8 Bukti mentah dari file capture" src="https://github.com/user-attachments/assets/820d6434-6770-4aea-9ffa-0380a278297b" />
 
@@ -2076,7 +2018,7 @@ BERHASIL: giaddr 192.225.2.1 sesuai interface Jichi
 
 Nilai `giaddr` `192.225.2.1` sesuai dengan interface `eth2` pada Jichi yang terhubung ke Network 2.
 
-**SS 8-06 — Ringkasan Field DHCP dan Verifikasi giaddr**
+**Ringkasan Field DHCP dan Verifikasi giaddr**
 
 <img width="960" height="516" alt="Soal8 SS 8-04 (Tengen)" src="https://github.com/user-attachments/assets/af40e61c-c324-453d-984f-5a260eabeae4" />
 
@@ -2092,8 +2034,7 @@ tcpdump -r /root/soal8.pcap -n -vvv 2>/dev/null | grep -E "BOOTP/DHCP|DHCP-Messa
 
 Perintah ini membaca file `/root/soal8.pcap` dan menampilkan pesan DHCP beserta field penting yang tersedia dalam hasil capture.
 
-**SS 8-07 — Verifikasi File Packet Capture**
-
+**Verifikasi File Packet Capture**
 
 ## Otomatisasi Pengujian Packet Capture DHCP Menggunakan Script
 
@@ -2139,6 +2080,8 @@ Pada konsol Tengen, jalankan:
 bash /root/soal8.sh
 ```
 
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/d96d8d81-bf39-4f68-9853-c16226c33f40" />
+
 Script digunakan untuk menangkap paket DHCP, menampilkan urutan pesan, serta merangkum alamat server, IP client, lease time, dan `giaddr`.
 
 **Cara menjalankan pengujian client**
@@ -2149,6 +2092,8 @@ Saat Tengen menampilkan instruksi untuk meminta lease, jalankan pada konsol Itad
 ip addr flush dev eth0; udhcpc -i eth0 -n -q; ip -4 -br addr show eth0; ip route
 ```
 
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/92938972-2aaf-4306-8637-7fb09c57c1f1" />
+
 Setelah pengujian selesai, periksa hasil capture pada Tengen.
 
 **Catatan:** Script menggunakan batas waktu maksimal 90 detik sesuai instruksi terminal. Client harus meminta lease ketika proses capture masih aktif.
@@ -2158,16 +2103,14 @@ Setelah pengujian selesai, periksa hasil capture pada Tengen.
 1. **Jichi:** periksa DHCP Relay menggunakan `pgrep -a dhcrelay; ip -br addr | grep -E "eth[2-4]"`.
 2. **Tengen:** periksa DHCP Server menggunakan `service isc-dhcp-server status`.
 3. **Tengen:** jalankan `bash /root/soal8.sh` dan tunggu instruksi.
-4. **Itadori:** jalankan perintah `udhcpc` beserta pemeriksaan IP dan routing.
-5. **Tengen:** periksa urutan DHCP, ringkasan field, dan nilai `giaddr`.
-6. **Tengen:** jika diperlukan, baca file `/root/soal8.pcap` menggunakan `tcpdump -r`.
 
 ## Kesimpulan
 
 Packet capture pada Tengen berhasil menunjukkan urutan DHCPDISCOVER → DHCPOFFER → DHCPREQUEST → DHCPACK dengan transaction ID `0x27a4ce0e`. Itadori memperoleh IP `192.225.2.10` dari server `192.225.4.10` dengan lease time 600 detik. Nilai `giaddr` sebesar `192.225.2.1` sesuai dengan interface `eth2` pada Jichi. Hasil ini
 
 ---
-# SOAL 9 — Pemulihan DHCP Relay pada Gangguan Jaringan
+# SOAL 9 
+Pemulihan DHCP Relay pada Gangguan Jaringan
 
 ## Deskripsi Tugas
 
@@ -2193,7 +2136,6 @@ Status service menunjukkan `active (running)`, yang berarti DHCP Server sedang b
 
 Jika service sudah berjalan, lanjutkan ke tahap berikutnya.
    
-
 ### 2. Menghentikan DHCP Relay pada Jichi
 
 **Perangkat: Jichi (Router/Relay)**
@@ -2296,6 +2238,7 @@ udhcpc: broadcasting discover
 udhcpc: broadcasting select for 192.225.2.13, server 192.225.4.10
 udhcpc: lease of 192.225.2.13 obtained from 192.225.4.10, lease time 595
 ```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/0916a1a8-8153-462c-b303-01648e827168" />
 
 Output menunjukkan bahwa Itadori berhasil memperoleh lease baru `192.225.2.13` dari DHCP Server `192.225.4.10` dengan lease time 595 detik.
 
@@ -2319,6 +2262,8 @@ eth0             UNKNOWN        192.225.2.13/24
 default via 192.225.2.1 dev eth0 metric 85793
 192.225.2.0/24 dev eth0 proto kernel scope link src 192.225.2.13
 ```
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/0dd7670d-4409-4c1c-aecf-74dcccf9d3a5" />
 
 Berdasarkan hasil tersebut:
 - **Alamat IP client:** `192.225.2.13/24`.
@@ -2349,7 +2294,6 @@ Pastikan status service menunjukkan `active (running)`. Pool Network 2 yang digu
 
 Pengujian Soal 9 dilakukan dengan menghentikan DHCP Relay pada Jichi, menguji permintaan lease baru dari client Itadori, kemudian mengaktifkan kembali relay dan mengulangi permintaan DHCP. Saat relay berhenti, permintaan DHCP seharusnya gagal memperoleh lease karena jalur menuju Data Center terputus. Setelah relay dipulihkan, Itadori berhasil memperoleh alamat IP `192.225.2.13/24` dari DHCP Server `192.225.4.10`, dengan gateway `192.225.2.1`. Alamat IP tersebut berada dalam pool Network 2 yang sesuai, sehingga pemulihan jalur relay berhasil dibuktikan.
 
----
 
 ## Otomatisasi Pengujian Menggunakan Script
 
@@ -2595,131 +2539,80 @@ Hasil tersebut membuktikan bahwa client kembali mendapatkan alamat dari pool yan
 
 <img width="960" height="516" alt="image" src="https://github.com/user-attachments/assets/01b4b7b7-702b-40a3-91ed-6208844a5058" />
 
-## Urutan Demo Otomatis
-# Soal 10: Pemulihan dan Autostart Layanan DHCP Setelah Restart
-
-## Deskripsi Tugas
-
-Pengujian memastikan DHCP Server pada Tengen dan DHCP Relay pada Jichi tetap berjalan setelah restart. Pemeriksaan mencakup status layanan, IP, gateway, lease, DNS, dan konektivitas client Network 2 dan 3. Kebijakan Pool 1, Pool 2, short lease, long lease, dan fixed address juga diverifikasi.
-
-| Client | IP yang harus didapat | Lease |
-|---|---|---|
-| itadori, fushiguro | `192.225.2.10` sampai `192.225.2.35` | 600 (default) |
-| zenin, okkotsu | `192.225.2.70` sampai `192.225.2.95` | 600 (default) |
-| ino, kusakabe | `192.225.3.10` sampai `192.225.3.89` | 1800 |
-| miwa | `192.225.3.100` sampai `192.225.3.199` | 43200 |
-| kugisaki | tepat `192.225.3.99` | 600 (default) |
-
-Tidak boleh ada IP di rentang `192.225.2.36` sampai `192.225.2.69`.
-
 ---
 
-## Langkah Pengerjaan
+# SOAL 10 
+Pemulihan dan Autostart Layanan DHCP Setelah Restart
 
-### Langkah 1: Memeriksa Init System pada Tengen
+### Deskripsi Tugas
 
-**Console perangkat:** Tengen
+Melakukan konfigurasi dan pengujian DHCP Server pada Tengen serta DHCP Relay pada Jichi secara manual. Pengujian meliputi IP, routing, status layanan, distribusi lease, gateway, DNS, dan konektivitas klien setelah restart.
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memeriksa Init System Tengen
+
+**Console perangkat: Tengen**
 
 ```bash
 ps -p 1 -o comm=
 ```
 
-**Hasil yang diharapkan:** `dumb-init`, artinya node **bukan systemd**. `systemctl enable` tidak berlaku, sehingga autostart dibuat lewat `/root/autostart.sh` yang dipanggil dari `/root/.bashrc` (berjalan saat console node dibuka).
-<img width="308" height="98" alt="image" src="https://github.com/user-attachments/assets/bfb837b5-ec57-4dfe-9ca1-f605e7180be2" />
+**Hasil yang diharapkan:** output `dumb-init`, sehingga pengelolaan layanan dan autostart tidak mengandalkan `systemctl enable`.
 
+#### Langkah 2 — Mengatur IP dan DHCP Server Tengen
 
-### Langkah 2: Memeriksa Konfigurasi DHCP Server
-
-**Console perangkat:** Tengen
+**Console perangkat: Tengen**
 
 ```bash
-cat /etc/default/isc-dhcp-server
-dhcpd -t -cf /etc/dhcp/dhcpd.conf
-grep -c "pool1-clients\|short-lease\|long-lease\|host kugisaki" /root/dhcpd.conf
-```
-
-**Hasil yang diharapkan:** `INTERFACESv4="eth0"`, `dhcpd -t` tanpa error, dan hitungan `grep` bernilai 6 atau lebih (config lengkap).
-
-<img width="727" height="303" alt="image" src="https://github.com/user-attachments/assets/7ef0b1da-7abf-48de-8164-2e635546817d" />
-
-
-### Langkah 3: Memeriksa Konfigurasi DHCP Relay
-
-**Console perangkat:** Jichi
-
-```bash
-cat /etc/default/isc-dhcp-relay
-```
-
-**Hasil yang diharapkan:**
-
-```
-SERVERS="192.225.4.10"
-INTERFACES="eth2 eth3 eth4"
-OPTIONS=""
-```
-
-`eth4` disertakan karena balasan dari tengen masuk lewat eth4.
-
-<img width="414" height="99" alt="image" src="https://github.com/user-attachments/assets/7bc9fe30-e4b6-4735-9d77-db4ee2094951" />
-
-### Langkah 4: Mengaktifkan Autostart Layanan
-
-#### 4.1 Tengen
-
-**Console perangkat:** Tengen
-
-```bash
-cat > /root/soal10-tengen.sh <<'EOF'
-#!/bin/bash
 ip link set eth0 up
 ip addr flush dev eth0
 ip addr add 192.225.4.10/24 dev eth0
 ip route replace default via 192.225.4.1
 echo "nameserver 192.168.122.1" > /etc/resolv.conf
-cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf
-mkdir -p /var/lib/dhcp
-: > /var/lib/dhcp/dhcpd.leases
-sed -i 's/^INTERFACESv4=.*/INTERFACESv4="eth0"/' /etc/default/isc-dhcp-server
-pgrep -x dhcpd >/dev/null || service isc-dhcp-server start
-EOF
-cp /root/soal10-tengen.sh /root/autostart.sh
-chmod +x /root/soal10-tengen.sh /root/autostart.sh
-grep -q autostart.sh /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
 ```
 
-Cara menjalankan manual (jika perlu): `bash /root/autostart.sh`
-
-| Baris | Fungsi |
-|---|---|
-| `ip addr flush dev eth0` | Menghapus IP nyasar sebelum memasang `192.225.4.10` |
-| `ip route replace default via 192.225.4.1` | Balasan DHCP ke relay butuh default route yang benar |
-| `cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf` | Memulihkan config lengkap dari salinan di `/root` |
-| `: > /var/lib/dhcp/dhcpd.leases` | Mengosongkan lease lama |
-| `pgrep -x dhcpd \|\| service ... start` | Menjalankan dhcpd hanya jika belum berjalan |
-
-#### 4.2 Jichi
-
-**Console perangkat:** Jichi
+Pastikan konfigurasi DHCP Server tersedia:
 
 ```bash
-cat > /root/soal10-jichi.sh <<'EOF'
-#!/bin/bash
-for i in 0 1 2 3 4; do ip link set eth$i up; done
-ip addr add 192.225.1.1/24 dev eth1 2>/dev/null
-ip addr add 192.225.2.1/24 dev eth2 2>/dev/null
-ip addr add 192.225.3.1/24 dev eth3 2>/dev/null
-ip addr add 192.225.4.1/24 dev eth4 2>/dev/null
-echo 1 > /proc/sys/net/ipv4/ip_forward
-iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null || \
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-echo "nameserver 192.168.122.1" > /etc/resolv.conf
-pgrep -x dhcrelay >/dev/null || dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10
-EOF
-cp /root/soal10-jichi.sh /root/autostart.sh
-chmod +x /root/soal10-jichi.sh /root/autostart.sh
-grep -q autostart.sh /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
+cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf
+sed -i 's/^INTERFACESv4=.*/INTERFACESv4="eth0"/' /etc/default/isc-dhcp-server
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
+```
 
+Jalankan layanan:
+
+```bash
+service isc-dhcp-server restart
+```
+
+**Hasil yang diharapkan:** Tengen memiliki IP `192.225.4.10/24`, gateway `192.225.4.1`, dan konfigurasi DHCP lolos pemeriksaan tanpa error.
+
+**Konfigurasi DHCP Server Tengen**
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/f1b2ef7b-b46e-445e-bbd0-9647f8ca034b" />
+
+ output `ip -br a`, `ip route`, dan pemeriksaan konfigurasi DHCP Server.
+
+#### Langkah 3 — Mengatur Gateway dan DHCP Relay Jichi
+
+**Console perangkat: Jichi**
+
+```bash
+for i in 0 1 2 3 4; do ip link set eth$i up; done
+
+ip addr add 192.225.1.1/24 dev eth1
+ip addr add 192.225.2.1/24 dev eth2
+ip addr add 192.225.3.1/24 dev eth3
+ip addr add 192.225.4.1/24 dev eth4
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+```
+
+Konfigurasikan DHCP Relay:
+
+```bash
 cat > /etc/default/isc-dhcp-relay <<'EOF'
 SERVERS="192.225.4.10"
 INTERFACES="eth2 eth3 eth4"
@@ -2727,65 +2620,259 @@ OPTIONS=""
 EOF
 ```
 
-Cara menjalankan manual (jika perlu): `bash /root/autostart.sh`
+Terapkan konfigurasi:
 
-| Baris | Fungsi |
-|---|---|
-| `ip addr add ... eth1` sampai `eth4` | Mengembalikan IP gateway tiap network (IP hilang saat node di-stop) |
-| `ip_forward = 1` | Mengaktifkan routing antar network |
-| `iptables ... MASQUERADE` | NAT keluar lewat eth0 |
-| `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10` | Meneruskan DHCP dari Network 2 dan 3 ke tengen |
+```bash
+service isc-dhcp-relay restart
+```
 
-#### 4.3 (Opsional) Start command GNS3
+**Hasil yang diharapkan:** Jichi memiliki gateway untuk Network 1–4, IPv4 forwarding aktif, dan DHCP Relay dikonfigurasi untuk interface `eth2`, `eth3`, serta `eth4`.
 
-Klik kanan node, **Configure**, **Advanced**, isi **Start command** dengan `bash /root/autostart.sh` (tengen dan jichi, jika opsinya tersedia).
+**Konfigurasi DHCP Relay Jichi**
 
-### Langkah 5: Melakukan Restart Kedua Node
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/7fa36da9-8d6e-4793-9536-f8098435c890" />
 
-**Console perangkat:** GNS3
+ output `cat /etc/default/isc-dhcp-relay` dan `ip -br a`.
 
-1. **Stop semua node** (tengen, jichi, dan client).
-2. **Start** tengen, jichi, lalu semua client.
-3. Buka console **tengen**, lalu **jichi**, dan tunggu sekitar 10 detik. Jangan menjalankan script apa pun secara manual.
+#### Langkah 4 — Memeriksa Status DHCP Server dan Relay
 
-**Hasil yang diharapkan:** layanan DHCP berjalan tanpa dinyalakan manual.
-
-> Autostart lewat `.bashrc` berjalan saat console dibuka. Jika console belum dibuka, layanan belum aktif dan client akan gagal mendapat lease. Itu bukan kesalahan konfigurasi.
-
-
-
-### Langkah 6: Memeriksa Status Layanan Setelah Restart
-
-**Console perangkat:** Tengen
+**Console perangkat: Tengen**
 
 ```bash
 service isc-dhcp-server status
-ps aux | grep [d]hcpd
+ps aux | grep '[d]hcpd'
+```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/13243773-6346-4b6d-b963-6b79f45c8522" />
+
+**Console perangkat: Jichi**
+
+```bash
+ps aux | grep '[d]hcrelay'
+cat /proc/sys/net/ipv4/ip_forward
+iptables -t nat -S | grep MASQ
+```
+
+**Hasil yang diharapkan:** proses `dhcpd` dan `dhcrelay` terdeteksi, forwarding bernilai `1`, dan rule `MASQUERADE` tersedia.
+
+**Status Layanan DHCP**
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/1884116f-2101-431e-8fb2-72825a91f0a4" />
+
+hasil pemeriksaan proses dan layanan pada Tengen dan Jichi.
+
+#### Langkah 5 — Menguji DHCP Client
+
+**Console perangkat:** seluruh klien Network 2 dan Network 3.
+
+Jalankan pada setiap klien:
+
+```bash
+udhcpc -i eth0 -n -q
+ip -4 -br addr show eth0
+ip route
+cat /etc/resolv.conf
+```
+
+**Hasil yang diharapkan:** klien mendapatkan IP sesuai pool, default gateway sesuai jaringan, dan DNS sesuai konfigurasi DHCP.
+
+| Klien | Rentang IP yang diharapkan | Lease |
+|---|---|---:|
+| Itadori, Fushiguro | `192.225.2.10–192.225.2.35` | 600 detik |
+| Zenin, Okkotsu | `192.225.2.70–192.225.2.95` | 600 detik |
+| Ino, Kusakabe | `192.225.3.10–192.225.3.89` | 1800 detik |
+| Miwa | `192.225.3.100–192.225.3.199` | 43200 detik |
+| Kugisaki | `192.225.3.99` | 600 detik |
+
+**Hasil DHCP Client**
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/40ed0f58-7555-45d7-b23b-ba371a86ad2f" />
+
+ hasil IP, gateway, DNS, dan lease dari setiap klien.
+
+#### Langkah 6 — Menguji Konektivitas
+
+**Console perangkat:** klien Network 2 dan Network 3.
+
+```bash
+ping -c 2 -W 2 $(ip route | awk '/default/ {print $3; exit}')
+ping -c 2 -W 2 8.8.8.8
+```
+
+**Hasil yang diharapkan:** ping gateway berhasil dan ping `8.8.8.8` berhasil jika akses eksternal tersedia.
+
+**Pengujian Konektivitas**
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/244e67af-6465-4742-a78d-4e1d7069bc5d" />
+
+ hasil ping gateway dan alamat eksternal dari klien.
+
+### Kesimpulan Konfigurasi Manual
+
+Konfigurasi manual dilakukan untuk memastikan DHCP Server, DHCP Relay, routing, dan NAT berjalan sebelum pengujian autostart. Keberhasilan harus dibuktikan melalui status proses, IP yang diperoleh klien, dan hasil pengujian konektivitas.
+
+## Konfigurasi Otomatis Menggunakan Script
+
+####  Membuat Script Autostart Tengen
+
+**Console perangkat: Tengen**
+
+Buat file `/root/soal10-tengen.sh`:
+
+```bash
+cat > /root/soal10-tengen.sh <<'EOF'
+#!/bin/bash
+
+ip link set eth0 up
+ip addr flush dev eth0
+ip addr add 192.225.4.10/24 dev eth0
+ip route replace default via 192.225.4.1
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+
+cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf
+mkdir -p /var/lib/dhcp
+touch /var/lib/dhcp/dhcpd.leases
+
+sed -i 's/^INTERFACESv4=.*/INTERFACESv4="eth0"/' /etc/default/isc-dhcp-server
+
+pgrep -x dhcpd >/dev/null || service isc-dhcp-server start
+
+echo "=== STATUS DHCP SERVER ==="
+service isc-dhcp-server status
+ps aux | grep '[d]hcpd'
+echo "=== SOAL 10 TENGEN SELESAI ==="
+EOF
+```
+
+Daftarkan script sebagai autostart:
+
+```bash
+cp /root/soal10-tengen.sh /root/autostart.sh
+chmod +x /root/soal10-tengen.sh /root/autostart.sh
+grep -q autostart.sh /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
+```
+
+Cara menjalankan manual:
+
+```bash
+bash /root/autostart.sh
+```
+
+**Hasil yang diharapkan:** script mengatur IP Tengen, memulihkan konfigurasi DHCP Server, lalu memeriksa proses layanan.
+
+**Output Script Tengen**
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/cf9d4d71-9a58-4358-918d-4fad383c978c" />
+
+output menjalankan `bash /root/autostart.sh` pada Tengen.
+
+#### Membuat Script Autostart Jichi
+
+**Console perangkat: Jichi**
+
+Buat file `/root/soal10-jichi.sh`:
+
+```bash
+cat > /root/soal10-jichi.sh <<'EOF'
+#!/bin/bash
+
+for i in 0 1 2 3 4; do
+    ip link set eth$i up
+done
+
+ip addr add 192.225.1.1/24 dev eth1 2>/dev/null
+ip addr add 192.225.2.1/24 dev eth2 2>/dev/null
+ip addr add 192.225.3.1/24 dev eth3 2>/dev/null
+ip addr add 192.225.4.1/24 dev eth4 2>/dev/null
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null || \
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+
+cat > /etc/default/isc-dhcp-relay <<'CONFIG'
+SERVERS="192.225.4.10"
+INTERFACES="eth2 eth3 eth4"
+OPTIONS=""
+CONFIG
+
+if ! pgrep -x dhcrelay >/dev/null; then
+    service isc-dhcp-relay start
+fi
+
+echo "=== STATUS DHCP RELAY ==="
+ps aux | grep '[d]hcrelay'
+echo "=== SOAL 10 JICHI SELESAI ==="
+EOF
+```
+
+Daftarkan script sebagai autostart:
+
+```bash
+cp /root/soal10-jichi.sh /root/autostart.sh
+chmod +x /root/soal10-jichi.sh /root/autostart.sh
+grep -q autostart.sh /root/.bashrc || echo "bash /root/autostart.sh" >> /root/.bashrc
+```
+
+Cara menjalankan manual:
+
+```bash
+bash /root/autostart.sh
+```
+
+**Hasil yang diharapkan:** script memulihkan IP gateway Jichi, mengaktifkan forwarding dan NAT, mengatur DHCP Relay, lalu memeriksa proses relay.
+
+**Output Script Jichi**
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/69b6006e-62c4-434e-bbe9-754790830e3e" />
+
+ output menjalankan `bash /root/autostart.sh` pada Jichi.
+
+#### Melakukan Restart Node
+
+**Console perangkat: GNS3**
+
+1. Stop Tengen, Jichi, dan seluruh klien.
+2. Start Tengen, kemudian Jichi dan seluruh klien.
+3. Buka Console Tengen dan Jichi.
+4. Tunggu sekitar 10 detik agar mekanisme autostart pada `.bashrc` berjalan.
+
+**Hasil yang diharapkan:** layanan DHCP kembali berjalan tanpa perlu menjalankan script konfigurasi secara manual setelah console dibuka.
+
+####  Memverifikasi Layanan Setelah Restart
+
+**Console perangkat: Tengen**
+
+```bash
+service isc-dhcp-server status
+ps aux | grep '[d]hcpd'
 ip -br a
 ip route
 ```
 
-**Console perangkat:** Jichi
+**Console perangkat: Jichi**
 
 ```bash
-ps aux | grep [d]hcrelay
+ps aux | grep '[d]hcrelay'
 ip -br a
 cat /proc/sys/net/ipv4/ip_forward
 iptables -t nat -S | grep MASQ
 ```
 
-**Hasil yang diharapkan:**
+**Hasil yang diharapkan:** proses DHCP Server dan Relay berjalan, IP serta gateway benar, forwarding bernilai `1`, dan rule NAT tersedia.
 
-- Tengen: layanan aktif, proses `dhcpd` ada, eth0 hanya `192.225.4.10/24`, `default via 192.225.4.1`.
-- Jichi: proses `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10`, eth1 sampai eth4 punya IP `.1`, ip_forward bernilai 1, ada `MASQUERADE`.
+** Verifikasi Setelah Restart**
 
-<img width="714" height="306" alt="image" src="https://github.com/user-attachments/assets/8e9882db-ade1-4773-afd0-ba6f7b40497f" />
-<img width="718" height="307" alt="image" src="https://github.com/user-attachments/assets/c59a3ecf-5b2d-4847-89c7-0db1a06019f9" />
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/4005718f-1989-4df0-8257-59bb7a0cf40c" />
 
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/66fa0d34-5424-4787-9388-b2c744622998" />
 
-### Langkah 7: Memeriksa Lease dan Kebijakan Pool
+output verifikasi Tengen dan Jichi setelah restart.
 
-**Console perangkat:** Tengen (jalankan setelah Langkah 8 agar semua client tercatat)
+#### Memeriksa Lease dan Kebijakan Pool
+
+**Console perangkat: Tengen**
 
 ```bash
 grep -E "^lease|starts|ends|hardware ethernet" /var/lib/dhcp/dhcpd.leases
@@ -2793,612 +2880,68 @@ grep -n "kugisaki" -A 8 /etc/dhcp/dhcpd.conf
 grep "^lease" /var/lib/dhcp/dhcpd.leases | awk '{print $2}' | awk -F. '$3==2 && $4>=36 && $4<=69'
 ```
 
-**Hasil yang diharapkan:**
+**Hasil yang diharapkan:** lease sesuai kebijakan pool, Kugisaki memiliki fixed address `192.225.3.99`, dan tidak ada lease di rentang `192.225.2.36–192.225.2.69`.
 
-- Short lease (ino, kusakabe): selisih `starts` dan `ends` tepat 30 menit.
-- Long lease (miwa): selisih tepat 12 jam.
-- Perintah ketiga kosong (tidak ada lease di `.2.36` sampai `.2.69`).
-- Kugisaki memakai `fixed-address 192.225.3.99`. Host reservasi tidak selalu tercatat di `dhcpd.leases`, sehingga buktinya adalah blok `host kugisaki` dan output `udhcpc` di client.
-- Entri IP yang sama muncul berulang karena `dhcpd.leases` adalah jurnal (renew menambah entri dengan MAC yang sama).
+**Verifikasi Lease**
 
-### Langkah 8: Memeriksa IP, Gateway, dan DNS Client
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/fd5bcc1a-b134-425e-b60d-258730768b5c" />
 
-**Console perangkat:** Itadori, Fushiguro, Zenin, Okkotsu, Ino, Kusakabe, Miwa, Kugisaki
+output lease, konfigurasi fixed address, dan pemeriksaan rentang IP terlarang.
 
-Jalankan satu perintah ini di **setiap client**:
+#### Memeriksa IP, Gateway, dan DNS Klien
 
-```sh
-udhcpc -i eth0 -n -q 2>&1 | grep "lease of"; ip -4 -br addr show eth0; ip route; cat /etc/resolv.conf
+**Console perangkat:** seluruh klien Network 2 dan Network 3.
+
+```bash
+udhcpc -i eth0 -n -q 2>&1 | grep "lease of"
+ip -4 -br addr show eth0
+ip route
+cat /etc/resolv.conf
 ```
 
-**Hasil yang diharapkan:**
+**Hasil yang diharapkan:** seluruh klien memperoleh IP sesuai pool, gateway sesuai jaringan, dan DNS sesuai konfigurasi DHCP.
 
-| Client | Hasil |
-|---|---|
-| itadori, fushiguro | `.2.10` sampai `.2.35` |
-| zenin, okkotsu | `.2.70` sampai `.2.95` |
-| ino, kusakabe | `.3.10` sampai `.3.89`, lease sekitar 1800 |
-| miwa | `.3.100` sampai `.3.199`, lease sekitar 43200 |
-| kugisaki | tepat `.3.99` |
+**Verifikasi DHCP Client**
 
-Di setiap client juga harus ada: netmask `/24`, `default via` gateway wilayahnya (`192.225.2.1` untuk Network 2, `192.225.3.1` untuk Network 3), `search K28.com`, `nameserver 192.225.1.2`, dan `nameserver 192.225.1.3`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/f9fd034c-193a-4a5f-8ab3-33be9516fa65" />
 
-> Lease time yang tampil di `udhcpc` adalah sisa waktu, bukan nilai penuh. Contoh: 1714 berarti lease 1800 yang sudah berjalan sekitar 86 detik.
+output pemeriksaan IP, gateway, DNS, dan lease setiap klien.
 
-### Langkah 9: Menguji Konektivitas Client
+#### Menguji Konektivitas Klien
 
-**Console perangkat:** Client Network 2 dan Network 3
+**Console perangkat:** klien Network 2 dan Network 3.
 
-```sh
+```bash
 ping -c 2 -W 2 $(ip route | awk '/default/ {print $3; exit}')
 ping -c 2 -W 2 8.8.8.8
 ```
 
-Perintah pertama otomatis memakai gateway wilayah client (`192.225.2.1` atau `192.225.3.1`).
+**Hasil yang diharapkan:** klien dapat menjangkau gateway dan alamat eksternal jika konektivitas WAN tersedia.
 
-**Hasil yang diharapkan:** ping gateway berhasil (membuktikan relay dan routing jichi), ping `8.8.8.8` berhasil (membuktikan NAT jichi).
+**Pengujian Konektivitas Setelah Restart**
 
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/4467dea6-15a3-4260-8756-53441da795ca" />
 
----
+ output ping gateway dan `8.8.8.8` dari klien.
 
-## Catatan Pengujian Ulang
+### Catatan Pengujian Ulang
 
-Perintah pada Langkah 6, 7, 8, dan 9 dapat dijalankan kembali kapan saja setelah restart. Kesimpulan hanya diambil dari output aktual yang diperoleh saat pengujian.
+Script dapat dijalankan kembali untuk memulihkan konfigurasi. Namun, jangan mengosongkan file lease setiap kali script dijalankan karena dapat menghilangkan catatan lease sebelumnya. Autostart melalui `.bashrc` berjalan saat console dibuka, bukan otomatis pada saat node mulai berjalan tanpa console.
 
-## Hasil Pengujian
+### Kesimpulan Konfigurasi Otomatis
 
-Hasil setelah restart total (ganti dengan hasil tes sendiri jika diulang):
+Script autostart digunakan untuk memulihkan konfigurasi DHCP Server dan DHCP Relay setelah restart node. Keberhasilan ditentukan dari proses layanan yang aktif, IP klien yang sesuai, kebijakan lease yang benar, serta hasil pengujian gateway dan konektivitas eksternal.
 
-| Client | IP | Lease (sisa) | Status |
-|---|---|---|---|
-| itadori | `192.225.2.11` | 558 | Pool 1 |
-| fushiguro | `192.225.2.10` | 538 | Pool 1 |
-| zenin | `192.225.2.71` | 529 | Pool 2 |
-| okkotsu | `192.225.2.70` | 520 | Pool 2 |
-| ino | `192.225.3.11` | 1714 | Short lease |
-| kusakabe | `192.225.3.12` | 1712 | Short lease |
-| miwa | `192.225.3.100` | 43102 | Long lease |
-| kugisaki | `192.225.3.99` | 600 | Fixed address |
+### Urutan Demo Otomatis
 
-## Urutan Demo
+1. Tengen: `bash /root/autostart.sh`.
+2. Jichi: `bash /root/autostart.sh`.
+3. Stop seluruh node, lalu start kembali Tengen, Jichi, dan klien.
+4. Buka console Tengen dan Jichi, lalu tunggu mekanisme autostart berjalan.
+5. Periksa status DHCP Server dan proses DHCP Relay.
+6. Periksa lease, IP, gateway, dan DNS setiap klien.
+7. Uji ping gateway dan `8.8.8.8`.
 
-1. **GNS3:** Stop semua node, lalu Start tengen, jichi, dan client.
-2. **Tengen, lalu Jichi:** buka console, tunggu 10 detik.
-3. **Tengen dan Jichi:** jalankan perintah Langkah 6.
-4. **Setiap client:** jalankan perintah Langkah 8 dan 9.
-5. **Tengen:** jalankan perintah Langkah 7.
-
-## Troubleshooting
-
-| Gejala | Penyebab umum | Solusi |
-|---|---|---|
-| Client `no lease, failing` | Console tengen atau jichi belum dibuka | Buka console tengen lalu jichi, tunggu 10 detik, ulangi |
-| Masih `no lease` padahal proses hidup | Kabel salah port atau Packet filter aktif di link GNS3 | Client Network 2 ke jichi eth2, Network 3 ke eth3, tengen eth0 ke jichi eth4. Hapus Packet filters di link |
-| Masih gagal | Kondisi node atau link nyangkut | Stop semua node, lalu Start tengen, jichi, dan client |
-| Tengen punya IP nyasar | Template network configuration lama | `ip addr flush dev eth0` di autostart sudah menangani ini |
-| `dhcpd -t` error | Config rusak atau tertimpa | `cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf`, lalu `dhcpd -t -cf /etc/dhcp/dhcpd.conf` |
-| `systemctl` gagal | Node memakai `dumb-init` | Pakai `service ... start` dan autostart lewat `.bashrc` |
-
-## Daftar File
-
-| Node | File | Cara menjalankan |
-|---|---|---|
-| tengen | `/root/dhcpd.conf` | `cp /root/dhcpd.conf /etc/dhcp/dhcpd.conf` |
-| tengen | `/root/soal10-tengen.sh`, `/root/autostart.sh` | `bash /root/autostart.sh` |
-| jichi | `/root/soal10-jichi.sh`, `/root/autostart.sh` | `bash /root/autostart.sh` |
-| jichi | `/etc/default/isc-dhcp-relay` | Dibaca layanan relay |
-
-# Soal 11 — Konfigurasi DNS Master dan Slave menggunakan BIND9
-
-## 1. Tujuan
-
-Praktikum ini bertujuan untuk mengonfigurasi layanan DNS menggunakan BIND9 dengan menerapkan arsitektur Master–Slave. Utahime berfungsi sebagai DNS Master yang menyimpan zona DNS utama, sedangkan Shoko berfungsi sebagai DNS Slave yang memperoleh salinan zona dari Master melalui mekanisme zone transfer.
-
-Pengujian dilakukan untuk memastikan kedua server dapat memberikan jawaban DNS yang benar, proses transfer zona berjalan dengan baik, dan perubahan serial zona pada Master tersinkronisasi ke Slave.
-
-## 2. Topologi dan Konfigurasi
-
-| Komponen | Peran | Alamat IP |
-|---|---|---|
-| Utahime | DNS Master | `192.225.1.2/24` |
-| Shoko | DNS Slave | `192.225.1.3/24` |
-| Itadori | Client pengujian | Network 2 |
-| Domain | Zona DNS | `jujutsu.k28.com` |
-
-Nama nameserver yang digunakan:
-
-- `ns1.jujutsu.k28.com` mengarah ke `192.225.1.2`.
-- `ns2.jujutsu.k28.com` mengarah ke `192.225.1.3`.
-
-## 3. Langkah Kerja Manual
-
-### 3.1. Instalasi BIND9 pada Utahime
-
-Pada terminal Utahime, jalankan:
-
-```bash
-apt-get update
-apt-get install -y bind9 bind9-utils dnsutils
-```
-
-Paket `bind9` digunakan untuk menjalankan layanan DNS, `bind9-utils` menyediakan utilitas pemeriksaan konfigurasi, sedangkan `dnsutils` menyediakan perintah pengujian DNS seperti `dig`.
-
-### 3.2. Membuat direktori zona DNS pada Utahime
-
-Jalankan perintah berikut:
-
-```bash
-mkdir -p /etc/bind/zones
-```
-
-Direktori `/etc/bind/zones` digunakan untuk menyimpan file zona DNS Master.
-
-### 3.3. Mengonfigurasi DNS Master
-
-Buka konfigurasi zona lokal:
-
-```bash
-nano /etc/bind/named.conf.local
-```
-
-Tambahkan konfigurasi berikut:
-
-```conf
-zone "jujutsu.k28.com" {
-    type master;
-    file "/etc/bind/zones/db.jujutsu.k28.com";
-    allow-transfer { 192.225.1.3; };
-    also-notify { 192.225.1.3; };
-    notify yes;
-};
-```
-
-Keterangan:
-
-- `type master` menetapkan Utahime sebagai DNS Master.
-- `file` menentukan lokasi file zona DNS.
-- `allow-transfer` mengizinkan Shoko mengambil salinan zona dari Master.
-- `also-notify` memberi tahu Shoko ketika zona diperbarui.
-- `notify yes` mengaktifkan pemberitahuan perubahan zona kepada nameserver terkait.
-
-Simpan file dengan `Ctrl + O`, tekan `Enter`, kemudian keluar menggunakan `Ctrl + X`.
-
-
-### 3.4. Membuat file zona DNS Master
-
-Buat dan buka file zona:
-
-```bash
-nano /etc/bind/zones/db.jujutsu.k28.com
-```
-
-Isi file dengan konfigurasi berikut:
-
-```dns
-$TTL 604800
-@   IN  SOA ns1.jujutsu.k28.com. admin.jujutsu.k28.com. (
-        2026101502 ; serial
-        604800     ; refresh
-        86400      ; retry
-        2419200    ; expire
-        604800     ; negative cache TTL
-)
-@    IN NS ns1.jujutsu.k28.com.
-@    IN NS ns2.jujutsu.k28.com.
-
-ns1  IN A 192.225.1.2
-ns2  IN A 192.225.1.3
-```
-
-Penjelasan:
-
-- `SOA` menyimpan informasi utama mengenai zona DNS.
-- `serial` merupakan nomor versi zona yang dinaikkan setiap kali isi zona diubah.
-- `NS` menentukan nameserver yang bertanggung jawab terhadap zona.
-- `A` memetakan nama host nameserver ke alamat IPv4.
-
-Simpan file setelah selesai.
-
-
-
-### 3.5. Memvalidasi konfigurasi Master
-
-Jalankan pada Utahime:
-
-```bash
-named-checkconf
-```
-
-Kemudian periksa file zona:
-
-```bash
-named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
-```
-
-Hasil yang diharapkan adalah pesan yang menunjukkan zona berhasil dimuat dan berakhir dengan `OK`.
-
-Pemeriksaan ini memastikan konfigurasi dan sintaks file zona dapat diterima oleh BIND9.
-
-<img width="712" height="122" alt="image" src="https://github.com/user-attachments/assets/8d7a80c7-868f-42fd-a38c-db04cc943904" />
-
-
-### 3.6. Menginstal dan mengonfigurasi DNS Slave pada Shoko
-
-Pada terminal Shoko, jalankan:
-
-```bash
-apt-get update
-apt-get install -y bind9 bind9-utils dnsutils
-```
-
-Pastikan direktori penyimpanan zona Slave tersedia:
-
-```bash
-mkdir -p /var/cache/bind
-chown bind:bind /var/cache/bind
-chmod 775 /var/cache/bind
-```
-
-Buka konfigurasi zona lokal:
-
-```bash
-nano /etc/bind/named.conf.local
-```
-
-Tambahkan konfigurasi:
-
-```conf
-zone "jujutsu.k28.com" {
-    type slave;
-    masters { 192.225.1.2; };
-    file "/var/cache/bind/db.jujutsu.k28.com";
-};
-```
-
-Keterangan:
-
-- `type slave` menetapkan Shoko sebagai DNS Slave.
-- `masters` menentukan alamat DNS Master yang menjadi sumber zona.
-- `file` menentukan lokasi penyimpanan salinan zona yang diperoleh dari Master.
-
-Simpan konfigurasi, kemudian validasi:
-
-```bash
-named-checkconf
-````.
-
-### 3.7. Menjalankan DNS Slave dan memeriksa zone transfer
-
-Pada Shoko, periksa apakah proses `named` sudah berjalan:
-
-```bash
-ps aux | grep '[n]amed'
-```
-
-Jika proses belum berjalan, jalankan:
-
-```bash
-named -u bind
-```
-
-Jika proses sudah berjalan, jangan menjalankan proses kedua. Periksa log BIND9 untuk memastikan transfer zona selesai.
-
-Pada konfigurasi yang diuji, log menunjukkan bahwa transfer zona `jujutsu.k28.com` berhasil, dengan serial `2026101502`.
-
-Periksa file hasil transfer:
-
-```bash
-ls -l /var/cache/bind/db.jujutsu.k28.com
-```
-
-File tersebut seharusnya tersedia setelah transfer berhasil.
-
-<img width="751" height="77" alt="image" src="https://github.com/user-attachments/assets/f8af01e0-b3b8-4446-aab3-d45c10965ca2" />
-
-
-### 3.8. Menguji DNS Master dan Slave
-
-Pada Itadori, jalankan query SOA ke DNS Master:
-
-```bash
-dig @192.225.1.2 jujutsu.k28.com SOA
-```
-
-Kemudian query ke DNS Slave:
-
-```bash
-dig @192.225.1.3 jujutsu.k28.com SOA
-```
-
-Hasil pengujian menunjukkan kedua server memberikan `status: NOERROR` dan flag `aa`. Flag `aa` menunjukkan bahwa jawaban yang diberikan bersifat otoritatif untuk zona yang diuji.
-
-Pada tahap ini, serial awal yang digunakan adalah `2026101502`.
-
-**Bukti screenshot 7:** Tampilkan hasil query SOA ke Master dan Slave.
-
-### 3.9. Menguji A record nameserver melalui Slave
-
-Pada Itadori, jalankan:
-
-```bash
-dig @192.225.1.3 ns1.jujutsu.k28.com A
-dig @192.225.1.3 ns2.jujutsu.k28.com A
-```
-
-Hasil yang diharapkan:
-
-- `ns1.jujutsu.k28.com` mengarah ke `192.225.1.2`.
-- `ns2.jujutsu.k28.com` mengarah ke `192.225.1.3`.
-
-Pengujian ini membuktikan bahwa Slave dapat memberikan jawaban untuk record yang terdapat di zona hasil transfer.
-
-**Bukti screenshot 8:** Tampilkan kedua hasil query A record dari Itadori.
-
-### 3.10. Menguji sinkronisasi perubahan serial
-
-Untuk menguji pembaruan zona, pada Utahime buka kembali file zona:
-
-```bash
-nano /etc/bind/zones/db.jujutsu.k28.com
-```
-
-Naikkan serial dari:
-
-```dns
-2026101502 ; serial
-```
-
-menjadi:
-
-```dns
-2026101503 ; serial
-```
-
-Simpan perubahan, kemudian validasi zona:
-
-```bash
-named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
-```
-
-Jika validasi berhasil, muat ulang zona:
-
-```bash
-rndc reload jujutsu.k28.com
-```
-
-Apabila `rndc` gagal karena belum dikonfigurasi, jangan langsung menghentikan proses BIND9. Periksa pesan kesalahannya terlebih dahulu. Pada lingkungan yang menjalankan `named` langsung, sinyal reload dapat digunakan setelah memastikan proses yang benar:
-
-```bash
-kill -HUP "$(pgrep -xo named)"
-```
-
-Selanjutnya, pada Itadori periksa serial Master:
-
-```bash
-dig @192.225.1.2 jujutsu.k28.com SOA
-```
-
-Kemudian periksa serial Slave:
-
-```bash
-dig @192.225.1.3 jujutsu.k28.com SOA
-```
-
-Hasil pengujian menunjukkan serial pada kedua server menjadi `2026101503`. Dengan demikian, pembaruan zona berhasil tersinkronisasi dari Master ke Slave.
-
-**Bukti screenshot 9:** Tampilkan hasil query SOA yang menunjukkan serial `2026101503` pada Master dan Slave.
-
-### 3.11. Memeriksa konfigurasi DNS pada client
-
-Pada Itadori, jalankan:
-
-```bash
-cat /etc/resolv.conf
-```
-
-Konfigurasi yang diperoleh:
-
-```conf
-search K28.com
-nameserver 192.225.1.2
-nameserver 192.225.1.3
-```
-
-Konfigurasi tersebut menunjukkan bahwa client mencantumkan Utahime sebagai nameserver pertama dan Shoko sebagai nameserver kedua.
-
-Kemudian lakukan pengujian akhir:
-
-```bash
-dig @192.225.1.2 jujutsu.k28.com SOA
-dig @192.225.1.3 jujutsu.k28.com SOA
-
-dig @192.225.1.3 ns1.jujutsu.k28.com A
-dig @192.225.1.3 ns2.jujutsu.k28.com A
-```
-
-Semua query yang diuji menghasilkan `status: NOERROR`. Serial pada kedua server adalah `2026101503`, sedangkan record A nameserver mengarah ke alamat IP yang sesuai.
-
-**Bukti screenshot 10:** Tampilkan konfigurasi `resolv.conf` dan hasil query akhir dari Itadori.
-
-## 4. Script Otomatisasi Konfigurasi
-
-Selain konfigurasi manual, konfigurasi DNS dapat disiapkan menggunakan script Bash. Script berikut merupakan alternatif untuk menyiapkan konfigurasi; script tidak wajib dijalankan ulang apabila konfigurasi yang sudah ada telah berhasil.
-
-**Catatan:** Simpan backup konfigurasi sebelum menjalankan script. Jalankan script Master hanya di Utahime dan script Slave hanya di Shoko. Script ini menulis ulang file zona Master dan menambahkan konfigurasi zona hanya jika belum ada.
-
-### 4.1. Script DNS Master
-
-Buat file:
-
-```bash
-nano /root/soal11_master.sh
-```
-
-Isi file:
-
-```bash
-#!/bin/bash
-set -e
-
-DOMAIN="jujutsu.k28.com"
-SLAVE_IP="192.225.1.3"
-ZONE_DIR="/etc/bind/zones"
-ZONE_FILE="$ZONE_DIR/db.$DOMAIN"
-LOCAL_CONF="/etc/bind/named.conf.local"
-
-apt-get update
-apt-get install -y bind9 bind9-utils dnsutils
-
-mkdir -p "$ZONE_DIR"
-
-# Backup konfigurasi yang sudah ada
-cp -a "$LOCAL_CONF" "$LOCAL_CONF.bak.$(date +%Y%m%d%H%M%S)"
-
-if [ -f "$ZONE_FILE" ]; then
-    cp -a "$ZONE_FILE" "$ZONE_FILE.bak.$(date +%Y%m%d%H%M%S)"
-fi
-
-# Tambahkan zona jika belum terdaftar
-if ! grep -q "zone \"$DOMAIN\"" "$LOCAL_CONF"; then
-    cat >> "$LOCAL_CONF" <<EOF
-
-zone "$DOMAIN" {
-    type master;
-    file "$ZONE_FILE";
-    allow-transfer { $SLAVE_IP; };
-    also-notify { $SLAVE_IP; };
-    notify yes;
-};
-EOF
-fi
-
-# Buat file zona
-cat > "$ZONE_FILE" <<EOF
-\$TTL 604800
-@ IN SOA ns1.$DOMAIN. admin.$DOMAIN. (
-    2026101503
-    604800
-    86400
-    2419200
-    604800
-)
-@   IN NS ns1.$DOMAIN.
-@   IN NS ns2.$DOMAIN.
-ns1 IN A 192.225.1.2
-ns2 IN A 192.225.1.3
-EOF
-
-chown bind:bind "$ZONE_FILE"
-chmod 644 "$ZONE_FILE"
-
-named-checkconf
-named-checkzone "$DOMAIN" "$ZONE_FILE"
-
-if rndc reload "$DOMAIN"; then
-    echo "Zona berhasil di-reload menggunakan rndc."
-elif pgrep -x named >/dev/null; then
-    kill -HUP "$(pgrep -xo named)"
-    echo "Sinyal reload dikirim ke named."
-else
-    named -u bind
-fi
-
-echo "Konfigurasi DNS Master selesai."
-```
-
-Jalankan pada Utahime:
-
-```bash
-chmod +x /root/soal11_master.sh
-bash /root/soal11_master.sh
-```
-
-### 4.2. Script DNS Slave
-
-Buat file pada Shoko:
-
-```bash
-nano /root/soal11_slave.sh
-```
-
-Isi file:
-
-```bash
-#!/bin/bash
-set -e
-
-DOMAIN="jujutsu.k28.com"
-MASTER_IP="192.225.1.2"
-LOCAL_CONF="/etc/bind/named.conf.local"
-ZONE_FILE="/var/cache/bind/db.$DOMAIN"
-
-apt-get update
-apt-get install -y bind9 bind9-utils dnsutils
-
-cp -a "$LOCAL_CONF" "$LOCAL_CONF.bak.$(date +%Y%m%d%H%M%S)"
-
-if ! grep -q "zone \"$DOMAIN\"" "$LOCAL_CONF"; then
-    cat >> "$LOCAL_CONF" <<EOF
-
-zone "$DOMAIN" {
-    type slave;
-    masters { $MASTER_IP; };
-    file "$ZONE_FILE";
-};
-EOF
-fi
-
-mkdir -p /var/cache/bind
-chown bind:bind /var/cache/bind
-chmod 775 /var/cache/bind
-
-named-checkconf
-
-if pgrep -x named >/dev/null; then
-    if ! rndc reload "$DOMAIN"; then
-        kill -HUP "$(pgrep -xo named)"
-    fi
-else
-    named -u bind
-fi
-
-echo "Konfigurasi DNS Slave selesai."
-echo "Periksa hasil transfer dengan:"
-echo "dig @192.225.1.3 $DOMAIN SOA"
-```
-
-Jalankan pada Shoko:
-
-```bash
-chmod +x /root/soal11_slave.sh
-bash /root/soal11_slave.sh
-```
-
-Script Slave mengambil salinan zona dari Master melalui mekanisme zone transfer. Jika proses BIND9 sudah berjalan, script mencoba melakukan reload dan tidak sengaja menjalankan proses kedua.
-
-## 5. Hasil Pengujian
-
-Berdasarkan pengujian yang dilakukan, diperoleh hasil sebagai berikut:
-
-| Pengujian | Hasil |
-|---|---|
-| Validasi konfigurasi Master | Berhasil |
-| Validasi zona Master | Berhasil |
-| Zone transfer ke Shoko | Berhasil |
-| Query SOA ke Master | `NOERROR` |
-| Query SOA ke Slave | `NOERROR` |
-| A record `ns1` melalui Slave | `192.225.1.2` |
-| A record `ns2` melalui Slave | `192.225.1.3` |
-| Sinkronisasi serial | `2026101502` menjadi `2026101503` |
-| Query dari Itadori ke kedua DNS | Berhasil |
-
-## 6. Kesimpulan
-
-Pada praktikum ini, layanan DNS Master–Slave menggunakan BIND9 berhasil dikonfigurasi. Utahime berfungsi sebagai DNS Master dengan zona `jujutsu.k28.com`, sedangkan Shoko berfungsi sebagai DNS Slave yang memperoleh salinan zona melalui zone transfer.
-
-Keberhasilan konfigurasi dibuktikan melalui validasi zona, query SOA dan A record, serta pengujian perubahan serial dari `2026101502` menjadi `2026101503`. Kedua DNS memberikan jawaban `NOERROR` saat diuji dari client Itadori. Hasil ini menunjukkan bahwa layanan DNS Master–Slave dan sinkronisasi zona telah berfungsi sesuai pengujian yang dilakukan.
-
----
 ---
 # Soal 11
 ## Konfigurasi DNS Master dan Slave menggunakan BIND9
@@ -3441,10 +2984,6 @@ zone "jujutsu.k28.com" {
 
 `allow-transfer` mengizinkan Shoko mengambil zona, sedangkan `also-notify` memberi tahu Shoko saat zona berubah.
 
-**SS 11-01 — Konfigurasi Zona Master**
-
-> **[TEMPAT SCREENSHOT 11-01]**: `cat /etc/bind/named.conf.local` di Utahime.
-
 #### Langkah 3 — Membuat File Zona
 
 **Console perangkat: Utahime**
@@ -3478,9 +3017,11 @@ named-checkzone jujutsu.k28.com /etc/bind/zones/db.jujutsu.k28.com
 
 **Hasil yang diharapkan:** `named-checkzone` berakhir dengan `OK`.
 
-**SS 11-02 — Validasi Zona**
+** Validasi Zona**
 
-> **[TEMPAT SCREENSHOT 11-02]**: output `named-checkconf` dan `named-checkzone`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/38ebf072-c8e8-4b4a-86c9-b64ea134cec0" />
+
+output `named-checkconf` dan `named-checkzone`.
 
 #### Langkah 4 — Mengonfigurasi Zona Slave
 
@@ -3504,10 +3045,6 @@ zone "jujutsu.k28.com" {
 
 Validasi dengan `named-checkconf`.
 
-**SS 11-03 — Konfigurasi Zona Slave**
-
-> **[TEMPAT SCREENSHOT 11-03]**: `cat /etc/bind/named.conf.local` di Shoko.
-
 #### Langkah 5 — Menjalankan BIND9 dan Memeriksa Zone Transfer
 
 **Console perangkat: Utahime lalu Shoko**
@@ -3524,10 +3061,6 @@ ls -l /var/cache/bind/db.jujutsu.k28.com
 
 **Hasil yang diharapkan:** file zona muncul di Shoko. Jika `named` sudah berjalan, jangan menjalankan proses kedua.
 
-**SS 11-04 — Zone Transfer Berhasil**
-
-> **[TEMPAT SCREENSHOT 11-04]**: `pgrep -a named` di kedua node dan `ls -l` file zona di Shoko.
-
 #### Langkah 6 — Query `dig` ke Master dan Slave dari Client
 
 **Console perangkat: Itadori**
@@ -3538,10 +3071,6 @@ dig @192.225.1.3 jujutsu.k28.com SOA
 ```
 
 **Hasil yang diharapkan:** keduanya `status: NOERROR` dengan flag `aa` dan serial `2026101502`.
-
-**SS 11-05 — Query SOA Master dan Slave**
-
-> **[TEMPAT SCREENSHOT 11-05]**: output kedua `dig`.
 
 #### Langkah 7 — Menguji Sinkronisasi Serial
 
@@ -3564,10 +3093,6 @@ dig @192.225.1.3 jujutsu.k28.com SOA +short
 
 **Hasil yang diharapkan:** serial pada Master dan Slave sama-sama `2026101503`.
 
-**SS 11-06 — Serial Tersinkronisasi**
-
-> **[TEMPAT SCREENSHOT 11-06]**: output `dig +short` kedua server dengan serial baru.
-
 ### Catatan Pengujian Ulang
 
 Setiap perubahan zona harus disertai kenaikan serial, kalau tidak Slave tidak menyalin ulang. Jangan menjalankan `named -u bind` jika proses sudah ada; cukup reload.
@@ -3585,7 +3110,70 @@ DNS Master (Utahime) dan Slave (Shoko) berhasil dikonfigurasi untuk `jujutsu.k28
 Pada console Utahime, buat file `/root/soal11_master.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal11_master.sh
+
+#!/bin/bash
+set -e
+
+DOMAIN="jujutsu.k28.com"
+SLAVE_IP="192.225.1.3"
+ZONE_DIR="/etc/bind/zones"
+ZONE_FILE="$ZONE_DIR/db.$DOMAIN"
+
+# Install BIND9 jika belum tersedia
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+
+# Buat direktori zona
+mkdir -p "$ZONE_DIR"
+
+# Konfigurasi zona Master
+cat > /etc/bind/named.conf.local <<EOF
+zone "$DOMAIN" {
+    type master;
+    file "$ZONE_FILE";
+    allow-transfer { $SLAVE_IP; };
+    also-notify { $SLAVE_IP; };
+    notify yes;
+};
+EOF
+
+# Buat file zona
+cat > "$ZONE_FILE" <<EOF
+\$TTL 604800
+@   IN SOA ns1.$DOMAIN. admin.$DOMAIN. (
+        2026101503
+        604800
+        86400
+        2419200
+        604800
+)
+@    IN NS ns1.$DOMAIN.
+@    IN NS ns2.$DOMAIN.
+ns1  IN A 192.225.1.2
+ns2  IN A 192.225.1.3
+EOF
+
+# Atur kepemilikan dan permission
+chown -R bind:bind "$ZONE_DIR"
+chmod 755 "$ZONE_DIR"
+chmod 644 "$ZONE_FILE"
+
+# Validasi konfigurasi
+named-checkconf
+named-checkzone "$DOMAIN" "$ZONE_FILE"
+
+# Reload jika rndc tersedia dan aktif; jika tidak, gunakan sinyal reload
+if rndc reload "$DOMAIN"; then
+    echo "Zona berhasil di-reload menggunakan rndc."
+elif pgrep -x named >/dev/null; then
+    kill -HUP "$(pgrep -xo named)"
+    echo "Mengirim sinyal reload ke proses named."
+else
+    named -u bind
+    echo "Proses named dijalankan."
+fi
+
+echo "Konfigurasi DNS Master selesai."
 ```
 
 ```bash
@@ -3597,6 +3185,7 @@ chmod +x /root/soal11_master.sh
 ```bash
 bash /root/soal11_master.sh
 ```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/087003ff-b485-4dba-8e04-c246102dc9d9" />
 
 **Fungsi:** memasang BIND9, membuat zona Master beserta file zona, memvalidasi, lalu me-reload `named`.
 
@@ -3607,7 +3196,45 @@ bash /root/soal11_master.sh
 Pada console Shoko, buat file `/root/soal11_slave.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal11_slave.sh
+#!/bin/bash
+set -e
+
+DOMAIN="jujutsu.k28.com"
+MASTER_IP="192.225.1.2"
+ZONE_FILE="/var/cache/bind/db.$DOMAIN"
+
+# Install BIND9 jika belum tersedia
+apt-get update
+apt-get install -y bind9 bind9-utils dnsutils
+
+# Konfigurasi zona Slave
+cat > /etc/bind/named.conf.local <<EOF
+zone "$DOMAIN" {
+    type slave;
+    masters { $MASTER_IP; };
+    file "$ZONE_FILE";
+};
+EOF
+
+# Pastikan direktori cache tersedia
+mkdir -p /var/cache/bind
+chown bind:bind /var/cache/bind
+chmod 775 /var/cache/bind
+
+# Validasi konfigurasi
+named-checkconf
+
+# Jalankan named jika belum aktif
+if pgrep -x named >/dev/null; then
+    rndc reload "$DOMAIN" || kill -HUP "$(pgrep -xo named)"
+else
+    named -u bind
+fi
+
+echo "Konfigurasi DNS Slave selesai."
+echo "Periksa hasil transfer dengan:"
+echo "dig @192.225.1.3 $DOMAIN SOA"
+
 ```
 
 ```bash
@@ -3619,6 +3246,7 @@ chmod +x /root/soal11_slave.sh
 ```bash
 bash /root/soal11_slave.sh
 ```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/b6110b56-73ba-4e63-93b9-a38c3f322d4a" />
 
 **Fungsi:** memasang BIND9 dan mendaftarkan zona Slave yang mengambil data dari Utahime.
 
@@ -3629,7 +3257,16 @@ bash /root/soal11_slave.sh
 Pada console Itadori, buat file `/root/soal11-test.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal11-test.sh
+#!/bin/bash
+DOMAIN="jujutsu.k28.com"
+IP_UTAHIME="192.225.1.5"  # <-- GANTI IP Utahime asli
+IP_SHOKO="192.225.1.6"    # <-- GANTI IP Shoko asli
+
+echo "=== QUERY KE MASTER (UTAHIME) ==="
+dig @$IP_UTAHIME $DOMAIN +short
+
+echo "=== QUERY KE SLAVE (SHOKO) ==="
+dig @$IP_SHOKO $DOMAIN +short
 ```
 
 **Cara menjalankan script**
@@ -3640,9 +3277,9 @@ sh /root/soal11-test.sh
 
 **Fungsi:** menjalankan `dig` SOA dan A record ke Master dan Slave.
 
-**SS 11-07 — Output Script Soal 11**
+**Output Script Soal 11**
 
-> **[TEMPAT SCREENSHOT 11-07]**: hasil script Master, Slave, dan pengujian client.
+ hasil script Master, Slave, dan pengujian client.
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
@@ -3675,10 +3312,6 @@ www  IN CNAME jujutsu.k28.com.
 
 **Hasil yang diharapkan:** zona valid saat dicek `named-checkzone`.
 
-**SS 12-01 — Isi File Zona**
-
-> **[TEMPAT SCREENSHOT 12-01]**: `cat /etc/bind/zones/db.jujutsu.k28.com`.
-
 #### Langkah 2 — Membuat Zona Reverse (PTR)
 
 **Console perangkat: Utahime**
@@ -3704,10 +3337,6 @@ $TTL 604800
 @   IN  NS  ns2.jujutsu.k28.com.
 <oktet-akhir-Gojo> IN PTR jujutsu.k28.com.
 ```
-
-**SS 12-02 — Zona Reverse**
-
-> **[TEMPAT SCREENSHOT 12-02]**: `cat /etc/bind/zones/db.192.225.1` dan blok zona reverse di `named.conf.local`.
 
 #### Langkah 3 — Mengaktifkan DNS Forwarder
 
@@ -3738,10 +3367,6 @@ rndc reload || kill -HUP "$(pgrep -xo named)"
 
 **Hasil yang diharapkan:** semua pengecekan `OK`.
 
-**SS 12-03 — Validasi dan Reload**
-
-> **[TEMPAT SCREENSHOT 12-03]**: output ketiga validasi.
-
 #### Langkah 5 — Menguji A, CNAME, dan PTR dari Client
 
 **Console perangkat: Itadori**
@@ -3754,10 +3379,6 @@ dig @192.225.1.2 -x <IP-Gojo> +short
 
 **Hasil yang diharapkan:** A mengarah ke Gojo, CNAME ke `jujutsu.k28.com.`, dan PTR kembali ke `jujutsu.k28.com.`.
 
-**SS 12-04 — Hasil dig A, CNAME, PTR**
-
-> **[TEMPAT SCREENSHOT 12-04]**: output ketiga `dig`.
-
 #### Langkah 6 — Menguji Forwarder ke Internet
 
 **Console perangkat: Itadori**
@@ -3768,10 +3389,6 @@ ping -c 3 google.com
 ```
 
 **Hasil yang diharapkan:** `google.com` ter-resolve dan ping berhasil.
-
-**SS 12-05 — Ping google.com**
-
-> **[TEMPAT SCREENSHOT 12-05]**: output `dig` dan `ping google.com`.
 
 ### Catatan Pengujian Ulang
 
@@ -3790,7 +3407,119 @@ Utahime berhasil memetakan `jujutsu.k28.com` dan `www` ke Gojo, menyediakan PTR 
 Pada console Utahime, buat file `/root/soal12_dns.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal12_dns.sh
+#!/bin/bash
+set -e
+
+DOMAIN="jujutsu.k28.com"
+PREFIX="192.225"
+GOJO_IP="192.225.1.4"
+ZONE_DIR="/etc/bind/zones"
+ZONE_FILE="$ZONE_DIR/db.$DOMAIN"
+REV_ZONE="1.225.192.in-addr.arpa"
+REV_FILE="$ZONE_DIR/db.192.225.1"
+
+# Pastikan script dijalankan sebagai root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Jalankan script sebagai root."
+    exit 1
+fi
+
+# Pastikan IP Gojo sesuai sebelum melanjutkan
+echo "Domain : $DOMAIN"
+echo "IP Gojo: $GOJO_IP"
+read -r -p "Apakah IP Gojo sudah benar? (y/n): " confirm
+[ "$confirm" = "y" ] || {
+    echo "Batalkan. Edit GOJO_IP di /root/soal12_dns.sh."
+    exit 1
+}
+
+# Backup konfigurasi yang akan diubah
+BACKUP="/root/backup_soal12_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP"
+cp -a /etc/bind/named.conf.local "$BACKUP/"
+cp -a /etc/bind/named.conf.options "$BACKUP/"
+[ ! -f "$ZONE_FILE" ] || cp -a "$ZONE_FILE" "$BACKUP/"
+[ ! -f "$REV_FILE" ] || cp -a "$REV_FILE" "$BACKUP/"
+echo "Backup: $BACKUP"
+
+mkdir -p "$ZONE_DIR"
+
+# Naikkan serial dari zona lama jika tersedia
+SERIAL="2026101501"
+if [ -f "$ZONE_FILE" ]; then
+    OLD_SERIAL=$(sed -n '/SOA/,/)/s/^[[:space:]]*\([0-9]\{10\}\).*/\1/p' "$ZONE_FILE" | head -n1)
+    if [[ "$OLD_SERIAL" =~ ^[0-9]{10}$ ]]; then
+        SERIAL=$((OLD_SERIAL + 1))
+    fi
+fi
+
+# Tulis zona forward
+cat > "$ZONE_FILE" <<ZONE
+\$TTL 604800
+@ IN SOA ns1.$DOMAIN. admin.$DOMAIN. (
+    $SERIAL
+    604800
+    86400
+    2419200
+    604800
+)
+@    IN NS ns1.$DOMAIN.
+@    IN NS ns2.$DOMAIN.
+ns1  IN A  192.225.1.2
+ns2  IN A  192.225.1.3
+@    IN A  $GOJO_IP
+www  IN CNAME $DOMAIN.
+ZONE
+
+# Tulis zona reverse untuk Network 1
+cat > "$REV_FILE" <<ZONE
+\$TTL 604800
+@ IN SOA ns1.$DOMAIN. admin.$DOMAIN. (
+    $SERIAL
+    604800
+    86400
+    2419200
+    604800
+)
+@ IN NS ns1.$DOMAIN.
+@ IN NS ns2.$DOMAIN.
+$(echo "$GOJO_IP" | awk -F. '{print $4}') IN PTR $DOMAIN.
+ZONE
+
+# Daftarkan zona reverse jika belum ada
+if ! grep -q "zone \"$REV_ZONE\"" /etc/bind/named.conf.local; then
+cat >> /etc/bind/named.conf.local <<ZONE
+
+zone "$REV_ZONE" {
+    type master;
+    file "$REV_FILE";
+};
+ZONE
+fi
+
+# Tambahkan DNS forwarder tanpa mengganti seluruh options
+if ! grep -q '192\.168\.122\.1' /etc/bind/named.conf.options; then
+    sed -i '/options[[:space:]]*{/a\        forwarders { 192.168.122.1; };' \
+        /etc/bind/named.conf.options
+fi
+
+# Validasi konfigurasi dan zona
+named-checkconf
+named-checkzone "$DOMAIN" "$ZONE_FILE"
+named-checkzone "$REV_ZONE" "$REV_FILE"
+
+# Reload jika memungkinkan, selain itu jalankan named
+if command -v rndc >/dev/null 2>&1 && rndc reload; then
+    :
+else
+    echo "rndc reload gagal/tidak tersedia. Periksa cara named dijalankan sebelum restart."
+fi
+
+echo
+echo "Selesai. Serial zona: $SERIAL"
+echo "Forward zone: $ZONE_FILE"
+echo "Reverse zone: $REV_FILE"
+echo "Backup konfigurasi: $BACKUP"
 ```
 
 ```bash
@@ -3805,9 +3534,11 @@ bash /root/soal12_dns.sh
 
 **Fungsi:** menambah A, CNAME, zona PTR, dan forwarder, lalu memvalidasi dan me-reload BIND9.
 
-**SS 12-06 — Output Script Soal 12**
+**Output Script Soal 12**
 
-> **[TEMPAT SCREENSHOT 12-06]**: hasil `bash /root/soal12_dns.sh`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/8fa58faf-6584-404f-b5f7-4b24f30f40f8" />
+
+ hasil `bash /root/soal12_dns.sh`.
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
@@ -3854,10 +3585,6 @@ mkdir -p /var/log/mysql && chown mysql:mysql /var/log/mysql
 service mariadb restart
 ```
 
-**SS 13-01 — Konfigurasi Master**
-
-> **[TEMPAT SCREENSHOT 13-01]**: baris `bind-address`, `server-id`, `log-bin` di Yaga.
-
 #### Langkah 3 — Membuat Database, Tabel, dan User
 
 **Console perangkat: Yaga**
@@ -3885,10 +3612,6 @@ SHOW MASTER STATUS;
 
 **Hasil yang diharapkan:** `SHOW MASTER STATUS` menampilkan `File` dan `Position`; catat keduanya. User `app` memberi akses remote bagi seluruh node Network 4.
 
-**SS 13-02 — Status Master**
-
-> **[TEMPAT SCREENSHOT 13-02]**: output `SHOW MASTER STATUS` dan `SHOW TABLES`.
-
 #### Langkah 4 — Mengonfigurasi Slave
 
 **Console perangkat: Inumaki**
@@ -3898,10 +3621,6 @@ nano /etc/mysql/mariadb.conf.d/50-server.cnf
 ```
 
 Isi pada `[mysqld]`: `server-id = 2` dan `bind-address = 0.0.0.0`, lalu `service mariadb restart`.
-
-**SS 13-03 — Konfigurasi Slave**
-
-> **[TEMPAT SCREENSHOT 13-03]**: baris `server-id` di Inumaki.
 
 #### Langkah 5 — Menghubungkan Slave ke Master
 
@@ -3924,10 +3643,6 @@ SHOW SLAVE STATUS\G
 
 **Hasil yang diharapkan:** `Slave_IO_Running: Yes` dan `Slave_SQL_Running: Yes`.
 
-**SS 13-04 — Status Slave**
-
-> **[TEMPAT SCREENSHOT 13-04]**: output `SHOW SLAVE STATUS\G`.
-
 #### Langkah 6 — Membuktikan Replikasi
 
 **Console perangkat: Yaga**
@@ -3944,9 +3659,6 @@ SELECT * FROM db_shibuya_K28.request_logs;
 
 **Hasil yang diharapkan:** baris `uji-replikasi` muncul di Slave.
 
-**SS 13-05 — Data Tereplikasi**
-
-> **[TEMPAT SCREENSHOT 13-05]**: INSERT di Yaga dan SELECT di Inumaki.
 
 ### Catatan Pengujian Ulang
 
@@ -3965,7 +3677,59 @@ MariaDB Master (Yaga) dan Slave (Inumaki) berhasil dikonfigurasi dengan database
 Pada console Yaga, buat file `/root/soal13_master.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal13_master.sh
+#!/bin/bash
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
+DB_NAME="db_shibuya_k28"
+REPL_USER="replica"
+REPL_PASS="ReplicaPass123!"
+
+apt-get update
+apt-get install -y mariadb-server mariadb-client
+
+cat > /etc/mysql/mariadb.conf.d/60-master.cnf <<'EOC'
+[mysqld]
+server-id = 1
+log_bin = /var/log/mysql/mysql-bin.log
+binlog_format = ROW
+bind-address = 0.0.0.0
+EOC
+
+service mariadb restart
+
+mariadb <<EOSQL
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+
+USE \`${DB_NAME}\`;
+
+CREATE TABLE IF NOT EXISTS request_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    client_ip VARCHAR(45),
+    endpoint VARCHAR(255),
+    request_method VARCHAR(10),
+    status_code INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE USER IF NOT EXISTS '${REPL_USER}'@'192.225.4.%'
+IDENTIFIED BY '${REPL_PASS}';
+
+GRANT REPLICATION SLAVE ON *.* TO '${REPL_USER}'@'192.225.4.%';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${REPL_USER}'@'192.225.4.%';
+
+CREATE USER IF NOT EXISTS 'appuser'@'192.225.4.%'
+IDENTIFIED BY 'AppPass123!';
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON \`${DB_NAME}\`.* TO 'appuser'@'192.225.4.%';
+
+FLUSH PRIVILEGES;
+EOSQL
+
+echo "=== STATUS MASTER ==="
+mariadb -e "SHOW MASTER STATUS;"
 ```
 
 ```bash
@@ -3977,6 +3741,7 @@ chmod +x /root/soal13_master.sh
 ```bash
 bash /root/soal13_master.sh
 ```
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/65a16780-8ce4-47a0-b1b3-8155eb2f35c4" />
 
 **Fungsi:** mengonfigurasi binary log, membuat database, tabel, serta user replikasi dan remote.
 
@@ -3987,7 +3752,69 @@ bash /root/soal13_master.sh
 Pada console Inumaki, buat file `/root/soal13_slave.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal13_slave.sh
+#!/bin/bash
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
+MASTER_IP="192.225.4.9"
+SLAVE_ID="2"
+DB_NAME="db_shibuya_k28"
+REPL_USER="replica"
+REPL_PASS="ReplicaPass123!"
+MASTER_LOG_FILE="mysql-bin.000001"
+MASTER_LOG_POS="2005"
+
+apt-get update
+apt-get install -y mariadb-server mariadb-client
+
+cat > /etc/mysql/mariadb.conf.d/60-slave.cnf <<'EOC'
+[mysqld]
+server-id = 2
+relay_log = /var/log/mysql/mysql-relay-bin.log
+read_only = ON
+bind-address = 0.0.0.0
+EOC
+
+mkdir -p /var/log/mysql /run/mysqld
+chown mysql:mysql /var/log/mysql /run/mysqld
+
+service mariadb restart
+
+# Siapkan skema awal agar tabel sudah tersedia di Slave
+mariadb <<EOSQL
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+
+USE \`${DB_NAME}\`;
+
+CREATE TABLE IF NOT EXISTS request_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    client_ip VARCHAR(45),
+    endpoint VARCHAR(255),
+    request_method VARCHAR(10),
+    status_code INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+EOSQL
+
+mariadb <<EOSQL
+STOP SLAVE;
+RESET SLAVE ALL;
+
+CHANGE MASTER TO
+    MASTER_HOST='${MASTER_IP}',
+    MASTER_PORT=3306,
+    MASTER_USER='${REPL_USER}',
+    MASTER_PASSWORD='${REPL_PASS}',
+    MASTER_LOG_FILE='${MASTER_LOG_FILE}',
+    MASTER_LOG_POS=${MASTER_LOG_POS};
+
+START SLAVE;
+EOSQL
+
+echo "=== STATUS SLAVE ==="
+mariadb -e "SHOW SLAVE STATUS\\G"
+
 ```
 
 ```bash
@@ -4000,11 +3827,9 @@ chmod +x /root/soal13_slave.sh
 bash /root/soal13_slave.sh
 ```
 
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/78fe74bd-6560-42af-a7f6-b332ccfcc121" />
+
 **Fungsi:** mengatur `server-id` Slave, menjalankan `CHANGE MASTER TO`, dan memulai replikasi.
-
-**SS 13-06 — Output Script Soal 13**
-
-> **[TEMPAT SCREENSHOT 13-06]**: hasil kedua script.
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
@@ -4014,7 +3839,7 @@ bash /root/soal13_slave.sh
 
 ---
 # Soal 14
-## Worker Frontend dan API dengan Nginx + PHP-FPM
+Worker Frontend dan API dengan Nginx + PHP-FPM
 
 Para worker di Data Center menjadi backend aplikasi. Maki dan Panda menyajikan web frontend yang menampilkan hostname, sedangkan Nanami, Todo, dan Kirara menyediakan API yang mencatat request ke database Yaga. Akses langsung dari client harus ditolak: web worker hanya menerima trafik dari Gojo dan API worker hanya dari Geto.
 
@@ -4082,10 +3907,6 @@ server {
 
 Konfigurasi sama, tetapi `allow <IP-Geto>;`. Jalankan `nginx -t`, mulai PHP-FPM, lalu `service nginx restart`.
 
-**SS 14-01 — Virtual Host Worker**
-
-> **[TEMPAT SCREENSHOT 14-01]**: `cat` vhost di salah satu web worker dan salah satu API worker, plus `nginx -t`.
-
 #### Langkah 5 — Menguji Akses Langsung Ditolak
 
 **Console perangkat: Itadori**
@@ -4097,10 +3918,6 @@ curl -I http://<IP-Nanami>/
 
 **Hasil yang diharapkan:** `403 Forbidden` (akses langsung dari client ditolak).
 
-**SS 14-02 — Akses Langsung Ditolak**
-
-> **[TEMPAT SCREENSHOT 14-02]**: output kedua `curl` di Itadori.
-
 #### Langkah 6 — Menguji Akses Melalui Proxy
 
 **Console perangkat: Gojo (web) dan Geto (API)**
@@ -4111,10 +3928,6 @@ curl -s -H "Host: jujutsu.k28.com" http://<IP-Nanami>/
 ```
 
 **Hasil yang diharapkan:** web membalas hostname Maki/Panda dan API membalas JSON dengan `status: ok`. Pastikan baris baru muncul di `request_logs` Yaga.
-
-**SS 14-03 — Akses Melalui Proxy Berhasil**
-
-> **[TEMPAT SCREENSHOT 14-03]**: output `curl` dari Gojo dan Geto, serta `SELECT` di Yaga.
 
 ### Catatan Pengujian Ulang
 
@@ -4133,7 +3946,147 @@ Maki dan Panda berhasil menyajikan frontend, sedangkan Nanami, Todo, dan Kirara 
 Pada console Maki, Panda, Nanami, Todo, dan Kirara, buat file `/root/soal14_worker.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal14_worker.sh  (satu per node; isinya bisa berbeda untuk frontend dan API)
+#!/bin/bash
+set -e
+
+ROLE="${1:?Gunakan frontend atau api}"
+NODE="${2:?Masukkan nama worker}"
+
+DB_HOST="192.225.4.9"
+DB_NAME="db_shibuya_k28"
+DB_USER="appuser"
+DB_PASS="AppPass123!"
+
+GOJO_IP="192.225.1.4"
+GETO_IP="192.225.4.2"
+
+if [ "$ROLE" != "frontend" ] && [ "$ROLE" != "api" ]; then
+    echo "Role harus frontend atau api"
+    exit 1
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+echo "=== Instalasi worker $NODE ($ROLE) ==="
+apt-get update
+apt-get install -y nginx php-fpm php-mysql mariadb-client
+
+# Mulai PHP-FPM
+for svc in /etc/init.d/php*-fpm; do
+    [ -x "$svc" ] && service "$(basename "$svc")" start
+done
+
+PHP_SOCK="$(find /run/php -maxdepth 1 -name 'php*-fpm.sock' | head -n 1)"
+if [ -z "$PHP_SOCK" ]; then
+    echo "ERROR: socket PHP-FPM tidak ditemukan"
+    exit 1
+fi
+
+mkdir -p /var/www/html
+
+if [ "$ROLE" = "frontend" ]; then
+    ALLOW_IP="$GOJO_IP"
+
+    cat > /var/www/html/index.php <<PHP
+<?php
+header('Content-Type: text/html; charset=utf-8');
+echo '<h1>Jujutsu High Frontend</h1>';
+echo '<p>Worker: ' . htmlspecialchars('$NODE') . '</p>';
+echo '<p>Hostname: ' . htmlspecialchars(gethostname()) . '</p>';
+?>
+PHP
+
+    SERVER_NAMES="jujutsu.k28.com www.jujutsu.k28.com"
+else
+    ALLOW_IP="$GETO_IP"
+
+    cat > /var/www/html/index.php <<'PHP'
+<?php
+header('Content-Type: application/json; charset=utf-8');
+
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$endpoint = $_SERVER['REQUEST_URI'] ?? '/';
+$client_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$status_code = 200;
+
+mysqli_report(MYSQLI_REPORT_OFF);
+$db = new mysqli(
+    '192.225.4.9',
+    'appuser',
+    'AppPass123!',
+    'db_shibuya_k28'
+);
+
+if ($db->connect_errno) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => 'Database connection failed',
+        'worker' => gethostname()
+    ]);
+    exit;
+}
+
+$stmt = $db->prepare(
+    'INSERT INTO request_logs
+    (client_ip, endpoint, request_method, status_code)
+    VALUES (?, ?, ?, ?)'
+);
+
+if ($stmt) {
+    $stmt->bind_param('sssi', $client_ip, $endpoint, $method, $status_code);
+    $stmt->execute();
+    $stmt->close();
+}
+
+$db->close();
+
+echo json_encode([
+    'service' => 'Jujutsu High API',
+    'worker' => gethostname(),
+    'endpoint' => $endpoint,
+    'method' => $method,
+    'logged' => true
+], JSON_PRETTY_PRINT);
+echo "\n";
+?>
+PHP
+
+    SERVER_NAMES="api.jujutsu.k28.com"
+fi
+
+cat > /etc/nginx/sites-available/default <<NGINX
+server {
+    listen 80;
+    server_name $SERVER_NAMES;
+
+    root /var/www/html;
+    index index.php index.html;
+
+    # Hanya proxy yang ditentukan boleh mengakses worker
+    allow $ALLOW_IP;
+    deny all;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:$PHP_SOCK;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
+NGINX
+
+nginx -t
+service nginx restart
+
+echo "=== SELESAI: $NODE ($ROLE) ==="
+nginx -t
+service nginx status
+
 ```
 
 ```bash
@@ -4148,9 +4101,10 @@ bash /root/soal14_worker.sh
 
 **Fungsi:** memasang Nginx dan PHP-FPM, membuat halaman/API, serta virtual host dengan pembatasan akses.
 
-**SS 14-04 — Output Script Soal 14**
+**Output Script Soal 14**
 
-> **[TEMPAT SCREENSHOT 14-04]**: hasil script di salah satu web worker dan salah satu API worker.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/dec6ee55-eedb-47b5-8562-3ed815310308" />
+ hasil script di salah satu web worker dan salah satu API worker.
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
@@ -4200,11 +4154,6 @@ server {
     }
 }
 ```
-
-**SS 15-01 — Konfigurasi Load Balancer**
-
-> **[TEMPAT SCREENSHOT 15-01]**: `cat /etc/nginx/conf.d/api_cluster.conf`.
-
 #### Langkah 3 — Validasi dan Menjalankan Nginx
 
 **Console perangkat: Geto**
@@ -4217,10 +4166,6 @@ pgrep -x nginx >/dev/null && nginx -s reload || service nginx start
 
 **Hasil yang diharapkan:** `nginx -t` berstatus `successful`.
 
-**SS 15-02 — Validasi Nginx**
-
-> **[TEMPAT SCREENSHOT 15-02]**: output `nginx -t` dan `pgrep -a nginx`.
-
 #### Langkah 4 — Menguji Rasio Distribusi Beban
 
 **Console perangkat: Tengen** (satu jaringan Data Center dengan Geto)
@@ -4230,10 +4175,6 @@ for i in $(seq 1 40); do curl -s http://<IP-Geto>/ ; echo; done | sort | uniq -c
 ```
 
 **Hasil yang diharapkan:** Nanami menerima sekitar 30 respons dan Todo sekitar 10 (rasio 3:1).
-
-**SS 15-03 — Rasio Respons 3:1**
-
-> **[TEMPAT SCREENSHOT 15-03]**: output `sort | uniq -c`.
 
 ### Catatan Pengujian Ulang
 
@@ -4252,7 +4193,44 @@ Geto berhasil menjadi load balancer internal dengan upstream `api_cluster` dan W
 Pada console Geto, buat file `/root/soal15_geto.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal15_geto.sh
+#!/bin/bash
+set -e
+
+NANAMI_IP="192.225.4.5"
+TODO_IP="192.225.4.6"
+
+apt-get install -y nginx curl
+
+cat > /etc/nginx/sites-available/default <<NGINX
+upstream api_cluster {
+    server ${NANAMI_IP}:80 weight=3;
+    server ${TODO_IP}:80 weight=1;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://api_cluster;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+}
+NGINX
+
+nginx -t
+service nginx restart
+
+echo "=== TEST NANAMI ==="
+curl -i --connect-timeout 3 http://${NANAMI_IP}/
+
+echo "=== TEST TODO ==="
+curl -i --connect-timeout 3 http://${TODO_IP}/
+
+echo "=== SELESAI ==="
+
 ```
 
 ```bash
@@ -4267,16 +4245,15 @@ bash /root/soal15_geto.sh
 
 **Fungsi:** menulis konfigurasi upstream `api_cluster`, memvalidasi, dan me-reload Nginx.
 
-**SS 15-04 — Output Script Soal 15**
+**Output Script Soal 15**
 
-> **[TEMPAT SCREENSHOT 15-04]**: hasil `bash /root/soal15_geto.sh`.
+ hasil `bash /root/soal15_geto.sh`.
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
 1. **Geto:** `bash /root/soal15_geto.sh`
 2. **Tengen:** jalankan loop `curl` ke Geto lalu hitung rasio.
 
----
 ---
 # Soal 16
 ## Gojo sebagai Public Reverse Proxy (Path-Based Routing)
