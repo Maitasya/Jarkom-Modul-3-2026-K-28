@@ -91,8 +91,6 @@ ping -c 3 8.8.8.8
 
 **Hasil yang diharapkan:** `0% packet loss`.
 
-** Ping Internet dari Jichi**
-
 <img width="935" height="134" alt="image" src="https://github.com/user-attachments/assets/47341f11-72ec-4a77-b898-85183e178eaf" />
 
 hasil ping `8.8.8.8` dari Jichi.
@@ -226,7 +224,6 @@ hasil ping 8.8.8.8
 
 <img width="936" height="131" alt="image" src="https://github.com/user-attachments/assets/d98f553f-29f7-4ffe-874d-7132995d00ef" />
 
-
 **Urutan Demo:** 
 (1) Jichi: `bash /root/soal1_jichi.sh`, 
 
@@ -237,7 +234,7 @@ hasil ping 8.8.8.8
 ---
 
 # Soal 2
-## Konfigurasi Dasar ISC DHCP Server di Tengen
+Konfigurasi Dasar ISC DHCP Server di Tengen
 
 Konfigurasikan `isc-dhcp-server` pada `192.225.4.10`. Deklarasikan Network 4 sebagai subnet lokal tanpa pool dinamis, siapkan scope DHCP untuk Network 2 dan Network 3, validasi konfigurasi, dan pastikan service aktif tanpa error "No subnet declaration".
 
@@ -254,9 +251,11 @@ ip route
 
 **Hasil yang diharapkan:** `eth0` berIP `192.225.4.10/24` dan `default via 192.225.4.1`.
 
-**SS 2-01 — IP dan Routing Tengen**
+**IP dan Routing Tengen**
 
-> **[TEMPAT SCREENSHOT 2-01]**: output `ip -br a` dan `ip route`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/3657dc3a-16ce-41bd-ad60-910ab314785e" />
+
+output `ip -br a` dan `ip route`.
 
 #### Langkah 2 — Menentukan Interface DHCP Server
 
@@ -272,10 +271,6 @@ Isi:
 INTERFACESv4="eth0"
 INTERFACESv6=""
 ```
-
-**SS 2-02 — Interface DHCP Server**
-
-> **[TEMPAT SCREENSHOT 2-02]**: `cat /etc/default/isc-dhcp-server`.
 
 #### Langkah 3 — Menulis Konfigurasi DHCP
 
@@ -317,9 +312,11 @@ subnet 192.225.3.0 netmask 255.255.255.0 {
 }
 ```
 
-**SS 2-03 — Isi dhcpd.conf**
+**Isi dhcpd.conf**
 
-> **[TEMPAT SCREENSHOT 2-03]**: `cat /etc/dhcp/dhcpd.conf` yang memperlihatkan blok `subnet 192.225.4.0 ... { }`, Network 2, dan Network 3.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/23f239c2-1eee-4f61-96e5-379350f5fa93" />
+
+ `cat /etc/dhcp/dhcpd.conf` yang memperlihatkan blok `subnet 192.225.4.0 ... { }`, Network 2, dan Network 3.
 
 #### Langkah 4 — Validasi dan Menjalankan Service
 
@@ -333,9 +330,11 @@ service isc-dhcp-server status
 
 **Hasil yang diharapkan:** `dhcpd -t` tanpa error dan status `dhcpd is running`.
 
-**SS 2-04 — Validasi dan Status Service**
+**Validasi dan Status Service**
 
-> **[TEMPAT SCREENSHOT 2-04]**: output `dhcpd -t` dan `service isc-dhcp-server status`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/7ad472f8-17ce-4e28-96b9-5af4a82e9c99" />
+
+output `dhcpd -t` dan `service isc-dhcp-server status`.
 
 ### Catatan Pengujian Ulang
 
@@ -351,10 +350,50 @@ DHCP Server pada Tengen berhasil dikonfigurasi dengan subnet lokal Network 4 tan
 
 **Cara membuat script**
 
-Pada console Tengen, buat file `/root/soal2_tengen.sh`:
+Pada console Tengen, buat file `cat /root/soal2_tengen.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal2_tengen.sh
+
+#!/bin/bash
+set -e
+
+CONF="/etc/dhcp/dhcpd.conf"
+
+echo "=== SOAL 2: KONFIGURASI DHCP SERVER TENGEN ==="
+
+# Pastikan interface server aktif
+ip link set eth0 up
+
+# Pastikan alamat server sesuai topologi
+ip addr replace 192.225.4.10/24 dev eth0
+ip route replace default via 192.225.4.1
+
+# Atur interface layanan DHCP
+printf 'INTERFACESv4="eth0"\nINTERFACESv6=""\n'     > /etc/default/isc-dhcp-server
+
+# Pastikan database lease tersedia tanpa menghapus data lama
+mkdir -p /var/lib/dhcp
+touch /var/lib/dhcp/dhcpd.leases
+
+# Validasi konfigurasi sebelum menjalankan service
+dhcpd -t -cf "$CONF"
+
+# Jalankan ulang DHCP Server
+service isc-dhcp-server restart
+
+echo "=== ALAMAT SERVER ==="
+ip -br addr show eth0
+
+echo "=== INTERFACE DHCP ==="
+cat /etc/default/isc-dhcp-server
+
+echo "=== STATUS DHCP SERVER ==="
+service isc-dhcp-server status
+
+echo "=== SUBNET YANG DIKONFIGURASI ==="
+grep -nE '^subnet |range |fixed-address' "$CONF"
+
+echo "=== SOAL 2 SELESAI ==="
 ```
 
 Berikan izin eksekusi:
@@ -371,16 +410,21 @@ bash /root/soal2_tengen.sh
 
 **Output yang diharapkan:** `dhcpd -t` tanpa error dan `dhcpd is running`.
 
-**SS 2-05 — Output Script Soal 2**
+**Output Script Soal 2**
 
-> **[TEMPAT SCREENSHOT 2-05]**: hasil `bash /root/soal2_tengen.sh`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/5011bd3e-be00-4b14-8af0-73de78be9534" />
 
-**Urutan Demo:** (1) Tengen: `bash /root/soal2_tengen.sh`, (2) cek `ps aux | grep '[d]hcpd'`.
+hasil `bash /root/soal2_tengen.sh`.
+
+**Urutan Demo:** 
+
+(1) Tengen: `bash /root/soal2_tengen.sh`, 
+
+(2) cek `ps aux | grep '[d]hcpd'`.
 
 ---
-
 # Soal 3
-## Konfigurasi DHCP Relay pada Jichi
+Konfigurasi DHCP Relay pada Jichi
 
 Konfigurasikan Jichi sebagai DHCP Relay menuju Tengen (`192.225.4.10`), menggunakan `eth2` untuk Network 2 dan `eth3` untuk Network 3. Buktikan client dari kedua subnet memperoleh lease melalui relay.
 
@@ -398,10 +442,6 @@ service isc-dhcp-server status
 
 **Hasil yang diharapkan:** `dhcpd is running`.
 
-**SS 3-01 — Status DHCP Server**
-
-> **[TEMPAT SCREENSHOT 3-01]**: output status service.
-
 #### Langkah 2 — Mengonfigurasi DHCP Relay
 
 **Console perangkat: Jichi**
@@ -417,10 +457,6 @@ SERVERS="192.225.4.10"
 INTERFACES="eth2 eth3 eth4"
 OPTIONS=""
 ```
-
-**SS 3-02 — Konfigurasi Relay**
-
-> **[TEMPAT SCREENSHOT 3-02]**: `cat /etc/default/isc-dhcp-relay`.
 
 #### Langkah 3 — Menjalankan Relay
 
@@ -446,9 +482,11 @@ ps aux | grep '[d]hcrelay'
 
 **Hasil yang diharapkan:** ada proses `dhcrelay` dengan server `192.225.4.10`. Jangan menjalankan relay kedua.
 
-**SS 3-03 — Proses Relay Aktif**
+**Proses Relay Aktif**
 
-> **[TEMPAT SCREENSHOT 3-03]**: output `ps aux | grep '[d]hcrelay'`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/e5205b6b-0e6f-498a-8c8d-d447018fed8a" />
+
+output `ps aux | grep '[d]hcrelay'`.
 
 #### Langkah 4 — Menguji Lease Client Network 2
 
@@ -462,9 +500,11 @@ ip route
 
 **Hasil yang diharapkan:** IP `192.225.2.x/24` dan `default via 192.225.2.1`.
 
-**SS 3-04 — Lease Client Network 2**
+**Lease Client Network 2**
 
-> **[TEMPAT SCREENSHOT 3-04]**: output di Itadori.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/8578f1cf-e297-41f7-ac00-397d16d219fb" />
+
+output di Itadori.
 
 #### Langkah 5 — Menguji Lease Client Network 3
 
@@ -478,9 +518,11 @@ ip route
 
 **Hasil yang diharapkan:** IP `192.225.3.x/24` dan `default via 192.225.3.1`.
 
-**SS 3-05 — Lease Client Network 3**
+**Lease Client Network 3**
 
-> **[TEMPAT SCREENSHOT 3-05]**: output di Ino.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/1321c5c3-6401-4b8c-8266-3dbc20325849" />
+
+ output di Ino.
 
 ### Catatan Pengujian Ulang
 
@@ -496,10 +538,39 @@ Jichi berhasil berfungsi sebagai DHCP Relay menuju Tengen. Client Network 2 dan 
 
 **Cara membuat script**
 
-Pada console Jichi, buat file `/root/soal3_jichi.sh`:
+Pada console Jichi, buat file `cat /root/soal3_jichi.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal3_jichi.sh
+#!/bin/bash
+set -e
+
+CONF="/etc/default/isc-dhcp-relay"
+
+echo "=== SOAL 3: KONFIGURASI DHCP RELAY JICHI ==="
+
+# Simpan konfigurasi sebelumnya jika backup belum tersedia
+cp -n "$CONF" "${CONF}.backup-soal3-final"
+
+# Konfigurasi server DHCP dan arah relay
+cat > "$CONF" <<'CONFIG'
+SERVERS="192.225.4.10"
+INTERFACES=""
+OPTIONS="-iu eth4 -id eth2 -id eth3"
+CONFIG
+
+# Pastikan konfigurasi relay sesuai
+cat "$CONF"
+
+# Terapkan konfigurasi
+service isc-dhcp-relay restart
+
+echo "=== STATUS DHCP RELAY ==="
+service isc-dhcp-relay status
+
+echo "=== PROSES DHCP RELAY ==="
+ps | grep '[d]hcrelay' || true
+
+echo "=== SOAL 3 SELESAI ==="
 ```
 
 Berikan izin eksekusi:
@@ -516,18 +587,38 @@ bash /root/soal3_jichi.sh
 
 **Output yang diharapkan:** proses `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10` tampil.
 
-**SS 3-06 — Output Script Soal 3**
+**Output Script Soal 3**
 
-> **[TEMPAT SCREENSHOT 3-06]**: hasil `bash /root/soal3_jichi.sh`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/45275b02-03aa-4a8a-803f-a572e7938e65" />
+
+ hasil `bash /root/soal3_jichi.sh`.
 
 #### Script Client (Itadori)
 
 **Cara membuat script**
 
-Pada console Itadori, buat file `/root/get_ip.sh`:
+Pada console Itadori, buat file `cat /root/get_ip.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/get_ip.sh
+#!/bin/sh
+# ==========================================
+# Script Refresh DHCP pada Client Alpine
+# Simpan di /root/get_ip.sh
+# ==========================================
+
+echo "=== Meminta IP Lease Baru via DHCP ==="
+killall udhcpc 2>/dev/null || true
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+
+echo "=== IP Address eth0 ==="
+ip addr show eth0
+
+echo "=== Routing Table ==="
+ip route
+
+echo "=== Resolv.conf ==="
+cat /etc/resolv.conf
 ```
 
 **Cara menjalankan script**
@@ -536,16 +627,25 @@ Pada console Itadori, buat file `/root/get_ip.sh`:
 sh /root/get_ip.sh
 ```
 
-**SS 3-07 — Output Script Client**
+**Output Script Client**
 
-> **[TEMPAT SCREENSHOT 3-07]**: hasil `sh /root/get_ip.sh` di Itadori.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/ed6187ea-a2e0-4446-9525-d40920c37854" />
 
-**Urutan Demo:** (1) Tengen: server aktif, (2) Jichi: `bash /root/soal3_jichi.sh`, (3) Itadori dan Ino: minta lease, (4) cek IP dan route.
+hasil `sh /root/get_ip.sh` di Itadori.
+
+**Urutan Demo:** 
+
+(1) Tengen: server aktif, 
+
+(2) Jichi: `bash /root/soal3_jichi.sh`, 
+
+(3) Itadori dan Ino: minta lease, 
+
+(4) cek IP dan route.
 
 ---
-
 # Soal 4
-## DHCP Class dan Dua Pool pada Network 2
+DHCP Class dan Dua Pool pada Network 2
 
 Atur dua pool pada Network 2: Pool 1 (`192.225.2.10–192.225.2.35`) untuk Itadori dan Fushiguro, Pool 2 (`192.225.2.70–192.225.2.95`) untuk Zenin dan Okkotsu. Rentang `192.225.2.36–192.225.2.69` tidak boleh dialokasikan. Pisahkan kedua kelompok dengan DHCP class berdasarkan MAC address.
 
@@ -568,9 +668,11 @@ ip -br link show eth0
 | Zenin | `02:42:6b:7c:b7:00` | Pool 2 |
 | Okkotsu | `02:42:9f:c2:73:00` | Pool 2 |
 
-**SS 4-01 — MAC Address Client**
+**MAC Address Client**
 
-> **[TEMPAT SCREENSHOT 4-01]**: output `ip -br link show eth0` di keempat client.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/8636345d-ec5b-466f-84ae-844132047e08" />
+
+ output `ip -br link show eth0` di Itadori.
 
 #### Langkah 2 — Menambahkan Class dan Pool
 
@@ -616,10 +718,6 @@ subnet 192.225.2.0 netmask 255.255.255.0 {
 }
 ```
 
-**SS 4-02 — Class dan Pool di dhcpd.conf**
-
-> **[TEMPAT SCREENSHOT 4-02]**: bagian `class "pool1-clients"`, `class "pool2-clients"`, dan dua blok `pool` pada subnet Network 2.
-
 #### Langkah 3 — Validasi dan Restart Service
 
 **Console perangkat: Tengen**
@@ -632,9 +730,11 @@ service isc-dhcp-server status
 
 **Hasil yang diharapkan:** tanpa error dan `dhcpd is running`.
 
-**SS 4-03 — Validasi dan Status**
+**Validasi dan Status**
 
-> **[TEMPAT SCREENSHOT 4-03]**: output ketiga perintah.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/02928b1b-9134-40b4-9170-276bd71e8bd6" />
+
+output ketiga perintah.
 
 #### Langkah 4 — Menguji Client Pool 1
 
@@ -648,9 +748,11 @@ ip -br a show eth0
 
 **Hasil yang diharapkan:** IP berada di `192.225.2.10`–`192.225.2.35`.
 
-**SS 4-04 — Client Pool 1**
+**Client Pool 1**
 
-> **[TEMPAT SCREENSHOT 4-04]**: output di Itadori dan Fushiguro.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/de0d88b1-2807-41a5-b296-1e90f5ec5890" />
+
+output di Itadori.
 
 #### Langkah 5 — Menguji Client Pool 2
 
@@ -664,9 +766,11 @@ ip -br a show eth0
 
 **Hasil yang diharapkan:** IP berada di `192.225.2.70`–`192.225.2.95`.
 
-**SS 4-05 — Client Pool 2**
+**Client Pool 2**
 
-> **[TEMPAT SCREENSHOT 4-05]**: output di Zenin dan Okkotsu.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/b64edab0-5d39-4d21-bd78-9edd24a056a2" />
+
+ output di Okkotsu.
 
 #### Langkah 6 — Membuktikan Rentang `.2.36`–`.2.69` Tidak Terpakai
 
@@ -675,12 +779,6 @@ ip -br a show eth0
 ```bash
 grep "^lease" /var/lib/dhcp/dhcpd.leases | awk '{print $2}' | awk -F. '$3==2 && $4>=36 && $4<=69'
 ```
-
-**Hasil yang diharapkan:** output kosong.
-
-**SS 4-06 — Rentang Terlarang Kosong**
-
-> **[TEMPAT SCREENSHOT 4-06]**: output perintah di atas (kosong) beserta `grep "^lease" /var/lib/dhcp/dhcpd.leases` sebagai pembanding.
 
 ### Catatan Pengujian Ulang
 
@@ -696,10 +794,40 @@ DHCP class berbasis MAC address berhasil memisahkan Network 2 menjadi Pool 1 dan
 
 **Cara membuat script**
 
-Pada console Tengen, buat file `/root/soal4_tengen.sh`:
+Pada console Tengen, buat file `cat /root/soal4_tengen.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal4_tengen.sh
+#!/bin/bash
+set -e
+
+CONF="/etc/dhcp/dhcpd.conf"
+
+echo "=== SOAL 4: DHCP CLASS DAN POOL ==="
+
+# Pastikan class dan rentang DHCP tersedia
+grep -q 'class "pool1-clients"' "$CONF"
+grep -q 'class "pool2-clients"' "$CONF"
+grep -q 'range 192.225.2.10 192.225.2.35' "$CONF"
+grep -q 'range 192.225.2.70 192.225.2.95' "$CONF"
+
+# Validasi konfigurasi sebelum restart
+dhcpd -t -cf "$CONF"
+
+service isc-dhcp-server restart
+
+echo "=== CLASS POOL 1 ==="
+grep -n -A 4 'class "pool1-clients"' "$CONF"
+
+echo "=== CLASS POOL 2 ==="
+grep -n -A 4 'class "pool2-clients"' "$CONF"
+
+echo "=== RENTANG DHCP NETWORK 2 ==="
+grep -n -A 16 'subnet 192.225.2.0' "$CONF"
+
+echo "=== STATUS DHCP ==="
+service isc-dhcp-server status
+
+echo "=== SOAL 4 SELESAI ==="
 ```
 
 Berikan izin eksekusi:
@@ -716,9 +844,11 @@ bash /root/soal4_tengen.sh
 
 **Output yang diharapkan:** `dhcpd -t` tanpa error dan `dhcpd is running`.
 
-**SS 4-07 — Output Script Soal 4**
+**Output Script Soal 4**
 
-> **[TEMPAT SCREENSHOT 4-07]**: hasil `bash /root/soal4_tengen.sh`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/5050335c-0241-4e89-a26b-16925a5cfbdf" />
+
+hasil `bash /root/soal4_tengen.sh`.
 
 #### Script Client
 
@@ -728,9 +858,17 @@ Jalankan pada Itadori, Fushiguro, Zenin, dan Okkotsu:
 sh /root/get_ip.sh
 ```
 
-> Ganti dengan nama script client yang kamu pakai jika berbeda (mis. `soal7_klien.sh`).
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/f3219045-da8b-4bdc-8426-bae088828098" />
 
-**Urutan Demo:** (1) Tengen: `bash /root/soal4_tengen.sh`, (2) Jichi: pastikan relay aktif, (3) keempat client: minta lease, (4) Tengen: cek rentang terlarang.
+**Urutan Demo:** 
+
+(1) Tengen: `bash /root/soal4_tengen.sh`, 
+
+(2) Jichi: pastikan relay aktif, 
+
+(3) keempat client: minta lease, 
+
+(4) Tengen: cek rentang terlarang.
 
 ---
 
@@ -756,10 +894,6 @@ ip -br link show eth0
 | Ino | `02:42:2c:11:46:00` | Short lease |
 | Kusakabe | `02:42:94:28:a5:00` | Short lease |
 | Miwa | `02:42:84:4d:0b:00` | Long lease |
-
-**SS 5-01 — MAC Address Client Network 3**
-
-> **[TEMPAT SCREENSHOT 5-01]**: output `ip -br link show eth0` di ketiga client.
 
 #### Langkah 2 — Menambahkan Class Lease Time
 
@@ -812,10 +946,6 @@ subnet 192.225.3.0 netmask 255.255.255.0 {
 }
 ```
 
-**SS 5-02 — Class dan Pool Network 3**
-
-> **[TEMPAT SCREENSHOT 5-02]**: bagian `class "short-lease-clients"`, `class "long-lease-clients"`, dan dua blok `pool` Network 3.
-
 #### Langkah 4 — Validasi dan Restart Service
 
 **Console perangkat: Tengen**
@@ -826,9 +956,11 @@ service isc-dhcp-server restart
 service isc-dhcp-server status
 ```
 
-**SS 5-03 — Validasi dan Status**
+**Validasi dan Status**
 
-> **[TEMPAT SCREENSHOT 5-03]**: output ketiga perintah.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/02928b1b-9134-40b4-9170-276bd71e8bd6" />
+
+ output ketiga perintah.
 
 #### Langkah 5 — Menguji Client Short Lease
 
@@ -843,9 +975,11 @@ cat /etc/resolv.conf
 
 **Hasil yang diharapkan:** IP di `192.225.3.10`–`192.225.3.89`, lease time sekitar `1800`, serta `search K28.com`, `nameserver 192.225.1.2`, `nameserver 192.225.1.3`.
 
-**SS 5-04 — Client Short Lease**
+**Client Short Lease**
 
-> **[TEMPAT SCREENSHOT 5-04]**: output di Ino dan Kusakabe.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/0cea46c7-3f5f-4045-a089-8fcdb223dc0f" />
+
+output di Kusakabe.
 
 #### Langkah 6 — Menguji Client Long Lease
 
@@ -860,9 +994,11 @@ cat /etc/resolv.conf
 
 **Hasil yang diharapkan:** IP di `192.225.3.100`–`192.225.3.199` dan lease time sekitar `43200`.
 
-**SS 5-05 — Client Long Lease**
+**Client Long Lease**
 
-> **[TEMPAT SCREENSHOT 5-05]**: output di Miwa.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/0fdc382e-890a-4d44-9c76-3009298d28fd" />
+
+output di Miwa.
 
 #### Langkah 7 — Membuktikan Durasi Lease di Server
 
@@ -876,9 +1012,11 @@ grep -E "^lease|starts|ends|hardware ethernet" /var/lib/dhcp/dhcpd.leases | tail
 
 > Lease time yang tampil di `udhcpc` adalah sisa waktu, bukan nilai penuh (mis. `1714` berarti lease 1800 yang sudah berjalan sekitar 86 detik).
 
-**SS 5-06 — Bukti Durasi Lease**
+**Bukti Durasi Lease**
 
-> **[TEMPAT SCREENSHOT 5-06]**: isi `dhcpd.leases` yang memperlihatkan selisih `starts`–`ends` Short Lease (30 menit) dan Long Lease (12 jam).
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/988bced1-0feb-4d2e-8870-c272ad759703" />
+
+isi `dhcpd.leases` yang memperlihatkan selisih `starts`–`ends` Short Lease (30 menit) dan Long Lease (12 jam).
 
 ### Catatan Pengujian Ulang
 
@@ -894,10 +1032,52 @@ Class berbasis MAC address berhasil membedakan lease time Network 3. Ino dan Kus
 
 **Cara membuat script**
 
-Pada console Tengen, buat file `/root/soal5_tengen.sh`:
+Pada console Tengen, buat file `cat /root/soal5_tengen.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal5_tengen.sh
+#!/bin/bash
+set -e
+
+CONF="/etc/dhcp/dhcpd.conf"
+
+echo "=== SOAL 5: LEASE DAN RESERVASI DHCP ==="
+
+# Pastikan class lease tersedia
+grep -q 'class "short-lease-clients"' "$CONF"
+grep -q 'class "long-lease-clients"' "$CONF"
+
+# Pastikan durasi lease sesuai ketentuan
+grep -q 'default-lease-time 1800;' "$CONF"
+grep -q 'max-lease-time 1800;' "$CONF"
+grep -q 'default-lease-time 43200;' "$CONF"
+grep -q 'max-lease-time 43200;' "$CONF"
+
+# Pastikan reservasi Kugisaki sesuai
+grep -q 'host kugisaki' "$CONF"
+grep -q 'hardware ethernet 02:42:51:c8:03:00;' "$CONF"
+grep -q 'fixed-address 192.225.3.99;' "$CONF"
+
+# Validasi tanpa mengubah konfigurasi
+dhcpd -t -cf "$CONF"
+
+echo "=== KONFIGURASI LEASE PENDEK ==="
+grep -n -A 5 'class "short-lease-clients"' "$CONF"
+
+echo "=== KONFIGURASI LEASE PANJANG ==="
+grep -n -A 4 'class "long-lease-clients"' "$CONF"
+
+echo "=== RESERVASI KUGISAKI ==="
+grep -n -A 9 'host kugisaki' "$CONF"
+
+echo "=== LEASE AKTIF TERSIMPAN ==="
+grep -n -E -B 5 -A 5 \
+    'hardware ethernet 02:42:(2c:11:46:00|94:28:a5:00|84:4d:0b:00|51:c8:03:00)' \
+    /var/lib/dhcp/dhcpd.leases || true
+
+echo "=== STATUS DHCP ==="
+service isc-dhcp-server status
+
+echo "=== SOAL 5 SELESAI ==="
 ```
 
 Berikan izin eksekusi:
@@ -914,9 +1094,11 @@ bash /root/soal5_tengen.sh
 
 **Output yang diharapkan:** `dhcpd -t` tanpa error dan `dhcpd is running`.
 
-**SS 5-07 — Output Script Soal 5**
+**Output Script Soal 5**
 
-> **[TEMPAT SCREENSHOT 5-07]**: hasil `bash /root/soal5_tengen.sh`.
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/e326fee0-dadc-4559-8090-1005dfb18c52" />
+
+hasil `bash /root/soal5_tengen.sh`.
 
 #### Script Client
 
@@ -926,7 +1108,19 @@ Jalankan pada Ino, Kusakabe, dan Miwa:
 ip addr flush dev eth0; udhcpc -i eth0 -n -q; ip -br a show eth0; cat /etc/resolv.conf
 ```
 
-**Urutan Demo:** (1) Tengen: `bash /root/soal5_tengen.sh`, (2) Jichi: pastikan relay aktif, (3) Ino, Kusakabe, Miwa: minta lease, (4) Tengen: cek `dhcpd.leases`.
+hasil:
+
+<img width="960" height="504" alt="image" src="https://github.com/user-attachments/assets/c5274ad5-b238-43c2-af92-a38849859053" />
+
+**Urutan Demo:** 
+
+(1) Tengen: `bash /root/soal5_tengen.sh`, 
+
+(2) Jichi: pastikan relay aktif, 
+
+(3) Ino, Kusakabe, Miwa: minta lease, 
+
+(4) Tengen: cek `dhcpd.leases`.
 
 ---
 ### Soal 6
