@@ -5,267 +5,269 @@
 | Maitasya Rohmatul Ula | 5027251026 |
 | A. Algifari Rantiga Isdar | 5027251084 |
 
+---
 # LAPORAN RESMI PRAKTIKUM KOMUNIKASI DATA & JARINGAN KOMPUTER
 ## MODUL 3: CURTAIN PROTOCOL - SHIBUYA INCIDENT
+
+### Informasi Dasar Pengalamatan (Prefix 192.225)
+
+| Network | Subnet | Gateway (Jichi) | Isi |
+|---|---|---|---|
+| Network 1 (DMZ) | `192.225.1.0/24` | `192.225.1.1` (`eth1`) | Utahime, Shoko, Gojo |
+| Network 2 (Divisi A) | `192.225.2.0/24` | `192.225.2.1` (`eth2`) | Itadori, Fushiguro, Zenin, Okkotsu |
+| Network 3 (Divisi B) | `192.225.3.0/24` | `192.225.3.1` (`eth3`) | Ino, Kusakabe, Miwa, Kugisaki |
+| Network 4 (Data Center) | `192.225.4.0/24` | `192.225.4.1` (`eth4`) | Tengen, Geto, worker, database |
+| WAN | NAT GNS3 | - | `eth0` Jichi |
+
 ---
 
-### Informasi Dasar Pengalamatan Subnet (Prefix 192.225 /24)
-* **Network 1 (DMZ)**: `192.225.1.0/24` — Gateway: `192.225.1.1` pada antarmuka `eth1` Jichi
-* **Network 2 (Divisi A)**: `192.225.2.0/24` — Gateway: `192.225.2.1` pada antarmuka `eth2` Jichi
-* **Network 3 (Divisi B)**: `192.225.3.0/24` — Gateway: `192.225.3.1` pada antarmuka `eth3` Jichi
-* **Network 4 (Data Center)**: `192.225.4.0/24` — Gateway: `192.225.4.1` pada antarmuka `eth4` Jichi
-* **Koneksi Eksternal / WAN**: Interface `eth0` Jichi terhubung ke NAT node GNS3
+# Soal 1
+## Konfigurasi Interface, Gateway, IPv4 Forwarding, dan Source NAT pada Jichi
 
----
+Konfigurasikan Jichi agar `eth0` memperoleh WAN dari NAT dan `eth1`–`eth4` menjadi gateway Network 1–4. Aktifkan IPv4 forwarding dan source NAT, tetapkan IP statis host infrastruktur, lalu buktikan konektivitas setiap host ke gateway dan akses eksternal dari host yang relevan.
 
-## SOAL 1: Konfigurasi Interface, Routing Gateway, IPv4 Forwarding, dan Source NAT Masquerade pada Jichi
+### Langkah Pengerjaan
 
-### A. Langkah-Langkah Pengerjaan Manual
+#### Langkah 1 — Mengaktifkan Interface Jichi
 
-1. Buka terminal console node **Jichi** melalui GNS3.
-2. Aktifkan seluruh antarmuka jaringan yang terhubung (`eth0` sampai `eth4`):
-   ```bash
-   ip link set eth0 up
-   ip link set eth1 up
-   ip link set eth2 up
-   ip link set eth3 up
-   ip link set eth4 up
-   ```
-
-3. Tetapkan alamat IP gateway untuk masing-masing subnet internal pada antarmuka `eth1`–`eth4`:
-   ```bash
-   ip addr flush dev eth1
-   ip addr add 192.225.1.1/24 dev eth1
-
-   ip addr flush dev eth2
-   ip addr add 192.225.2.1/24 dev eth2
-
-   ip addr flush dev eth3
-   ip addr add 192.225.3.1/24 dev eth3
-
-   ip addr flush dev eth4
-   ip addr add 192.225.4.1/24 dev eth4
-   ```
-
-4. Periksa apakah seluruh IP gateway telah terpasang dengan benar pada interface masing-masing:
-   ```bash
-   ip -br a
-   ```
-   > **[TEMPAT SCREENSHOT 1.1]**: Output perintah `ip -br a` di terminal Jichi yang memperlihatkan `eth0` memperoleh IP WAN/NAT, dan `eth1`–`eth4` memiliki IP `192.225.1.1/24` sampai `192.225.4.1/24`.
-
-5. Aktifkan fitur routing kernel Linux (IPv4 Packet Forwarding):
-   ```bash
-   echo 1 > /proc/sys/net/ipv4/ip_forward
-   ```
-
-6. Tambahkan aturan Source NAT (MASQUERADE) menggunakan iptables pada antarmuka WAN (`eth0`):
-   ```bash
-   iptables -t nat -F POSTROUTING
-   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-   ```
-
-7. Verifikasi aturan NAT dan status forwarding di Jichi:
-   ```bash
-   cat /proc/sys/net/ipv4/ip_forward
-   iptables -t nat -L POSTROUTING -v -n
-   ```
-   > **[TEMPAT SCREENSHOT 1.2]**: Output `cat /proc/sys/net/ipv4/ip_forward` bernilai `1` dan output `iptables -t nat -L POSTROUTING -v -n` yang menampilkan chain POSTROUTING dengan target `MASQUERADE` pada interface `eth0`.
-
-8. Tetapkan DNS resolver lokal awal di Jichi:
-   ```bash
-   echo "nameserver 192.168.122.1" > /etc/resolv.conf
-   ```
-
-9. Lakukan uji konektivitas ke internet langsung dari Jichi:
-   ```bash
-   ping -c 3 8.8.8.8
-   ```
-
-10. Masuk ke salah satu node di Network 4, misalnya **Tengen**, tetapkan IP statis dan default gateway untuk membuktikan konektivitas melalui Jichi:
-    ```bash
-    ip addr add 192.225.4.10/24 dev eth0
-    ip route add default via 192.225.4.1
-    ping -c 3 192.225.4.1
-    ping -c 3 8.8.8.8
-    ```
-    > **[TEMPAT SCREENSHOT 1.3]**: Hasil ping dari Jichi ke `8.8.8.8` serta hasil ping dari node internal (`Tengen`) menuju gateway `192.225.4.1` dan tembus ke internet `8.8.8.8` (membuktikan NAT Masquerade berhasil).
-
-### B. Isi Skrip Konfigurasi dan Cara Menjalankannya
-
-Sesuai aturan praktikum nomor 5, skrip disimpan di direktori root node **Jichi** pada file `/root/setup_soal1.sh`:
+**Console perangkat: Jichi**
 
 ```bash
-#!/bin/bash
-# ==========================================
-# Skrip Soal 1: Konfigurasi Interface, Routing, dan NAT di Jichi
-# Simpan di: /root/setup_soal1.sh
-# ==========================================
+for i in 0 1 2 3 4; do ip link set eth$i up; done
+```
 
-echo "=== [1] Mengaktifkan Interface Jichi ==="
-ip link set eth0 up
-ip link set eth1 up
-ip link set eth2 up
-ip link set eth3 up
-ip link set eth4 up
+**Hasil yang diharapkan:** tidak ada pesan error.
 
-echo "=== [2] Mengonfigurasi IP Gateway Subnet ==="
-ip addr flush dev eth1
-ip addr add 192.225.1.1/24 dev eth1
+#### Langkah 2 — Menetapkan IP Gateway Network 1–4
 
-ip addr flush dev eth2
-ip addr add 192.225.2.1/24 dev eth2
+**Console perangkat: Jichi**
 
-ip addr flush dev eth3
-ip addr add 192.225.3.1/24 dev eth3
-
-ip addr flush dev eth4
-ip addr add 192.225.4.1/24 dev eth4
-
-echo "=== [3] Mengaktifkan IPv4 Packet Forwarding ==="
-echo 1 > /proc/sys/net/ipv4/ip_forward
-
-echo "=== [4] Mengatur Source NAT (MASQUERADE) via eth0 ==="
-iptables -t nat -F POSTROUTING
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-
-echo "=== [5] Menetapkan DNS Resolver Awal ==="
-echo "nameserver 192.168.122.1" > /etc/resolv.conf
-
-echo "=== Selesai Mengonfigurasi Soal 1 ==="
+```bash
+ip addr flush dev eth1; ip addr add 192.225.1.1/24 dev eth1
+ip addr flush dev eth2; ip addr add 192.225.2.1/24 dev eth2
+ip addr flush dev eth3; ip addr add 192.225.3.1/24 dev eth3
+ip addr flush dev eth4; ip addr add 192.225.4.1/24 dev eth4
 ip -br a
 ```
 
-**Cara Menjalankan Skrip:**
-1. Buka konsol terminal node **Jichi**.
-2. Buat dan simpan skrip di `/root/setup_soal1.sh`.
-3. Berikan hak akses eksekusi pada skrip:
-   ```bash
-   chmod +x /root/setup_soal1.sh
-   ```
-4. Jalankan skrip konfigurasi:
-   ```bash
-   /root/setup_soal1.sh
-   ```
-5. Periksa hasil eksekusi dan jalankan uji ping untuk memastikan rute aktif:
-   ```bash
-   ping -c 3 8.8.8.8
-   ```
+**Hasil yang diharapkan:** `eth0` memperoleh IP dari NAT, `eth1`–`eth4` berturut-turut `192.225.1.1/24` sampai `192.225.4.1/24`.
 
----
+**SS 1-01 — IP Interface Jichi**
 
-## SOAL 2: Konfigurasi Dasar ISC DHCP Server di Tengen (Deklarasi Subnet Tanpa Error)
+> **[TEMPAT SCREENSHOT 1-01]**: output `ip -br a` di Jichi.
 
-### A. Langkah-Langkah Pengerjaan Manual
+#### Langkah 3 — Mengaktifkan IPv4 Forwarding dan Source NAT
 
-1. Buka terminal console node **Tengen**.
-2. Konfigurasikan IP statis pada antarmuka `eth0` beserta default gateway ke arah router Jichi:
-   ```bash
-   ip addr flush dev eth0
-   ip addr add 192.225.4.10/24 dev eth0
-   ip link set eth0 up
-   ip route flush default
-   ip route add default via 192.225.4.1
-   echo "nameserver 192.168.122.1" > /etc/resolv.conf
-   ```
-
-3. Edit file pengaturan antarmuka DHCP Server di `/etc/default/isc-dhcp-server`:
-   ```bash
-   nano /etc/default/isc-dhcp-server
-   ```
-   Atur antarmuka yang akan mendengarkan request DHCP menjadi `eth0`:
-   ```text
-   INTERFACESv4="eth0"
-   INTERFACESv6=""
-   ```
-   > **[TEMPAT SCREENSHOT 2.1]**: Tampilkan isi file `/etc/default/isc-dhcp-server` yang menunjukkan `INTERFACESv4="eth0"`.
-
-4. Buka dan edit file konfigurasi utama DHCP `/etc/dhcp/dhcpd.conf`:
-   ```bash
-   nano /etc/dhcp/dhcpd.conf
-   ```
-
-5. Tuliskan opsi global domain dan deklarasikan Network 4 (`192.225.4.0/24`) sebagai subnet lokal kosong tanpa alokasi pool dinamis agar daemon tidak memunculkan error *"No subnet declaration for eth0"*, lalu siapkan blok deklarasi subnet untuk Network 2 (`192.225.2.0/24`) dan Network 3 (`192.225.3.0/24`):
-   ```text
-   ddns-update-style none;
-   authoritative;
-
-   option domain-name "K28.com";
-   option domain-name-servers 192.225.1.2, 192.225.1.3;
-
-   # Subnet lokal Data Center tanpa pool dinamis (Mencegah error 'No subnet declaration')
-   subnet 192.225.4.0 netmask 255.255.255.0 {
-   }
-
-   # Scope Subnet Network 2 (Divisi A)
-   subnet 192.225.2.0 netmask 255.255.255.0 {
-       option routers 192.225.2.1;
-       option subnet-mask 255.255.255.0;
-       option broadcast-address 192.225.2.255;
-       option domain-name-servers 192.225.1.2, 192.225.1.3;
-       option domain-search "K28.com";
-   }
-
-   # Scope Subnet Network 3 (Divisi B)
-   subnet 192.225.3.0 netmask 255.255.255.0 {
-       option routers 192.225.3.1;
-       option subnet-mask 255.255.255.0;
-       option broadcast-address 192.225.3.255;
-       option domain-name-servers 192.225.1.2, 192.225.1.3;
-       option domain-search "K28.com";
-   }
-   ```
-   > **[TEMPAT SCREENSHOT 2.2]**: Tampilkan potongan file `/etc/dhcp/dhcpd.conf` yang memperlihatkan blok deklarasi kosong `subnet 192.225.4.0 netmask 255.255.255.0 { }`.
-
-6. Lakukan pengujian validasi sintaks file konfigurasi:
-   ```bash
-   dhcpd -t -cf /etc/dhcp/dhcpd.conf
-   ```
-
-7. Jalankan ulang layanan daemon DHCP Server dan periksa statusnya:
-   ```bash
-   service isc-dhcp-server restart
-   service isc-dhcp-server status
-   ```
-   > **[TEMPAT SCREENSHOT 2.3]**: Tampilkan output `dhcpd -t -cf /etc/dhcp/dhcpd.conf` yang bebas dari pesan error dan output `service isc-dhcp-server status` dengan status running normal.
-
-### B. Isi Skrip Konfigurasi dan Cara Menjalankannya
-
-Skrip disimpan di direktori root node **Tengen** pada file `/root/setup_soal2.sh`:
+**Console perangkat: Jichi**
 
 ```bash
-#!/bin/bash
-# ==========================================
-# Skrip Soal 2: Konfigurasi Dasar DHCP Server di Tengen
-# Simpan di: /root/setup_soal2.sh
-# ==========================================
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -t nat -F POSTROUTING
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
 
-echo "=== [1] Mengonfigurasi Interface dan Route Tengen ==="
+Verifikasi:
+
+```bash
+cat /proc/sys/net/ipv4/ip_forward
+iptables -t nat -L POSTROUTING -v -n
+```
+
+**Hasil yang diharapkan:** nilai forwarding `1` dan ada rule `MASQUERADE` pada `eth0`.
+
+**SS 1-02 — Forwarding dan NAT**
+
+> **[TEMPAT SCREENSHOT 1-02]**: output kedua perintah verifikasi.
+
+#### Langkah 4 — Menguji Akses Eksternal dari Jichi
+
+**Console perangkat: Jichi**
+
+```bash
+ping -c 3 8.8.8.8
+```
+
+**Hasil yang diharapkan:** `0% packet loss`.
+
+**SS 1-03 — Ping Internet dari Jichi**
+
+> **[TEMPAT SCREENSHOT 1-03]**: hasil ping `8.8.8.8` dari Jichi.
+
+#### Langkah 5 — Menetapkan IP Statis Host Infrastruktur
+
+**Console perangkat: Tengen, Utahime, Shoko, Gojo**
+
+Contoh Tengen (host lain dengan pola sama, sesuaikan IP dan gateway):
+
+```bash
 ip addr flush dev eth0
 ip addr add 192.225.4.10/24 dev eth0
 ip link set eth0 up
-ip route flush default
-ip route add default via 192.225.4.1
+ip route replace default via 192.225.4.1
 echo "nameserver 192.168.122.1" > /etc/resolv.conf
+```
 
-echo "=== [2] Mengatur /etc/default/isc-dhcp-server ==="
-cat << 'EOF' > /etc/default/isc-dhcp-server
+| Host | IP | Gateway |
+|---|---|---|
+| Utahime | `192.225.1.2/24` | `192.225.1.1` |
+| Shoko | `192.225.1.3/24` | `192.225.1.1` |
+| Gojo | `<isi>/24` | `192.225.1.1` |
+| Tengen | `192.225.4.10/24` | `192.225.4.1` |
+
+**SS 1-04 — IP Statis Host**
+
+> **[TEMPAT SCREENSHOT 1-04]**: `ip -br a` dan `ip route` di Tengen, Utahime, Shoko, dan Gojo (satu SS per node).
+
+#### Langkah 6 — Menguji Konektivitas Host ke Gateway dan Internet
+
+**Console perangkat: Tengen, Utahime, Shoko, Gojo**
+
+```bash
+ping -c 3 <gateway-network-host>
+ping -c 3 8.8.8.8
+```
+
+**Hasil yang diharapkan:** ping gateway dan `8.8.8.8` berhasil.
+
+**SS 1-05 — Konektivitas Host**
+
+> **[TEMPAT SCREENSHOT 1-05]**: hasil ping gateway dan `8.8.8.8` dari tiap host.
+
+### Catatan Pengujian Ulang
+
+Seluruh perintah verifikasi dapat dijalankan berulang. IP yang diatur dengan `ip addr add` hilang saat node di-stop, jadi jalankan ulang script jika node baru dinyalakan.
+
+### Kesimpulan
+
+Jichi berhasil dikonfigurasi sebagai router dengan gateway Network 1–4, IPv4 forwarding aktif, dan source NAT `MASQUERADE` pada `eth0`. Host infrastruktur memperoleh IP statis dan dapat menjangkau gateway serta internet melalui Jichi.
+
+### Otomatisasi Menggunakan Script
+
+#### Script Jichi
+
+**Cara membuat script**
+
+Pada console Jichi, buat file `/root/soal1_jichi.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal1_jichi.sh
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal1_jichi.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal1_jichi.sh
+```
+
+**Output yang diharapkan:** `<isi sesuai output aslimu>`
+
+**SS 1-06 — Output Script Soal 1**
+
+> **[TEMPAT SCREENSHOT 1-06]**: hasil `bash /root/soal1_jichi.sh`.
+
+#### Script IP Statis Host
+
+| Node | File | Perintah |
+|---|---|---|
+| Tengen | `/root/init.sh` | `bash /root/init.sh` |
+| Utahime | `/root/init.sh` | `bash /root/init.sh` |
+| Shoko | `/root/init.sh` | `bash /root/init.sh` |
+| Gojo | `/root/konfig_gojo.sh` | `bash /root/konfig_gojo.sh` |
+
+```bash
+# TEMPEL ISI: cat /root/init.sh  (Tengen)
+```
+
+```bash
+# TEMPEL ISI: cat /root/init.sh  (Utahime)
+```
+
+```bash
+# TEMPEL ISI: cat /root/init.sh  (Shoko)
+```
+
+```bash
+# TEMPEL ISI: cat /root/konfig_gojo.sh
+```
+
+**SS 1-07 — Output Script Host**
+
+> **[TEMPAT SCREENSHOT 1-07]**: hasil script di tiap host.
+
+**Urutan Demo:** (1) Jichi: `bash /root/soal1_jichi.sh`, (2) tiap host: jalankan script IP, (3) tiap host: ping gateway dan `8.8.8.8`.
+
+---
+
+# Soal 2
+## Konfigurasi Dasar ISC DHCP Server di Tengen
+
+Konfigurasikan `isc-dhcp-server` pada `192.225.4.10`. Deklarasikan Network 4 sebagai subnet lokal tanpa pool dinamis, siapkan scope DHCP untuk Network 2 dan Network 3, validasi konfigurasi, dan pastikan service aktif tanpa error "No subnet declaration".
+
+### Langkah Pengerjaan
+
+#### Langkah 1 — Memeriksa IP dan Routing Tengen
+
+**Console perangkat: Tengen**
+
+```bash
+ip -br a
+ip route
+```
+
+**Hasil yang diharapkan:** `eth0` berIP `192.225.4.10/24` dan `default via 192.225.4.1`.
+
+**SS 2-01 — IP dan Routing Tengen**
+
+> **[TEMPAT SCREENSHOT 2-01]**: output `ip -br a` dan `ip route`.
+
+#### Langkah 2 — Menentukan Interface DHCP Server
+
+**Console perangkat: Tengen**
+
+```bash
+nano /etc/default/isc-dhcp-server
+```
+
+Isi:
+
+```text
 INTERFACESv4="eth0"
 INTERFACESv6=""
-EOF
+```
 
-echo "=== [3] Mengatur /etc/dhcp/dhcpd.conf ==="
-cat << 'EOF' > /etc/dhcp/dhcpd.conf
+**SS 2-02 — Interface DHCP Server**
+
+> **[TEMPAT SCREENSHOT 2-02]**: `cat /etc/default/isc-dhcp-server`.
+
+#### Langkah 3 — Menulis Konfigurasi DHCP
+
+**Console perangkat: Tengen**
+
+```bash
+nano /etc/dhcp/dhcpd.conf
+```
+
+Isi:
+
+```text
 ddns-update-style none;
 authoritative;
 
 option domain-name "K28.com";
 option domain-name-servers 192.225.1.2, 192.225.1.3;
 
-# Subnet 4 lokal Data Center tanpa pool dinamis
+# Network 4: subnet lokal tanpa pool (mencegah 'No subnet declaration')
 subnet 192.225.4.0 netmask 255.255.255.0 {
 }
 
-# Subnet 2 Divisi A
+# Network 2 (Divisi A)
 subnet 192.225.2.0 netmask 255.255.255.0 {
     option routers 192.225.2.1;
     option subnet-mask 255.255.255.0;
@@ -274,7 +276,7 @@ subnet 192.225.2.0 netmask 255.255.255.0 {
     option domain-search "K28.com";
 }
 
-# Subnet 3 Divisi B
+# Network 3 (Divisi B)
 subnet 192.225.3.0 netmask 255.255.255.0 {
     option routers 192.225.3.1;
     option subnet-mask 255.255.255.0;
@@ -282,213 +284,274 @@ subnet 192.225.3.0 netmask 255.255.255.0 {
     option domain-name-servers 192.225.1.2, 192.225.1.3;
     option domain-search "K28.com";
 }
-EOF
+```
 
-echo "=== [4] Memvalidasi Sintaks DHCP ==="
+**SS 2-03 — Isi dhcpd.conf**
+
+> **[TEMPAT SCREENSHOT 2-03]**: `cat /etc/dhcp/dhcpd.conf` yang memperlihatkan blok `subnet 192.225.4.0 ... { }`, Network 2, dan Network 3.
+
+#### Langkah 4 — Validasi dan Menjalankan Service
+
+**Console perangkat: Tengen**
+
+```bash
 dhcpd -t -cf /etc/dhcp/dhcpd.conf
-
-echo "=== [5] Menjalankan Ulang Service isc-dhcp-server ==="
 service isc-dhcp-server restart
 service isc-dhcp-server status
 ```
 
-**Cara Menjalankan Skrip:**
-1. Buka konsol terminal node **Tengen**.
-2. Simpan skrip di `/root/setup_soal2.sh`.
-3. Berikan izin eksekusi:
-   ```bash
-   chmod +x /root/setup_soal2.sh
-   ```
-4. Jalankan skrip:
-   ```bash
-   /root/setup_soal2.sh
-   ```
-5. Periksa status layanan untuk memastikan dhcpd berjalan:
-   ```bash
-   ps aux | grep dhcpd
-   ```
+**Hasil yang diharapkan:** `dhcpd -t` tanpa error dan status `dhcpd is running`.
+
+**SS 2-04 — Validasi dan Status Service**
+
+> **[TEMPAT SCREENSHOT 2-04]**: output `dhcpd -t` dan `service isc-dhcp-server status`.
+
+### Catatan Pengujian Ulang
+
+`dhcpd -t`, `service ... status`, dan `ps aux | grep '[d]hcpd'` dapat dijalankan berulang. Jika `dhcpd -t` error, perbaiki sintaks dulu sebelum restart service.
+
+### Kesimpulan
+
+DHCP Server pada Tengen berhasil dikonfigurasi dengan subnet lokal Network 4 tanpa pool serta scope Network 2 dan Network 3. Konfigurasi valid dan service berjalan tanpa error "No subnet declaration".
+
+### Otomatisasi Menggunakan Script
+
+#### Script DHCP Server pada Tengen
+
+**Cara membuat script**
+
+Pada console Tengen, buat file `/root/soal2_tengen.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal2_tengen.sh
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal2_tengen.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal2_tengen.sh
+```
+
+**Output yang diharapkan:** `dhcpd -t` tanpa error dan `dhcpd is running`.
+
+**SS 2-05 — Output Script Soal 2**
+
+> **[TEMPAT SCREENSHOT 2-05]**: hasil `bash /root/soal2_tengen.sh`.
+
+**Urutan Demo:** (1) Tengen: `bash /root/soal2_tengen.sh`, (2) cek `ps aux | grep '[d]hcpd'`.
 
 ---
 
-## SOAL 3: Konfigurasi DHCP Relay pada Jichi
+# Soal 3
+## Konfigurasi DHCP Relay pada Jichi
 
-### A. Langkah-Langkah Pengerjaan Manual
+Konfigurasikan Jichi sebagai DHCP Relay menuju Tengen (`192.225.4.10`), menggunakan `eth2` untuk Network 2 dan `eth3` untuk Network 3. Buktikan client dari kedua subnet memperoleh lease melalui relay.
 
-1. Buka terminal console node **Jichi**.
-2. Buka file konfigurasi DHCP Relay `/etc/default/isc-dhcp-relay`:
-   ```bash
-   nano /etc/default/isc-dhcp-relay
-   ```
+> Catatan: `eth4` ikut dimasukkan karena balasan dari Tengen masuk melalui `eth4`.
 
-3. Arahkan server tujuan relay ke IP Tengen (`192.225.4.10`) dan tentukan interface yang terlibat: `eth2` (klien Network 2), `eth3` (klien Network 3), dan `eth4` (jalur keluar menuju server Tengen):
-   ```text
-   SERVERS="192.225.4.10"
-   INTERFACES="eth2 eth3 eth4"
-   OPTIONS=""
-   ```
-   > **[TEMPAT SCREENSHOT 3.1]**: Tampilkan isi file `/etc/default/isc-dhcp-relay` di terminal Jichi.
+### Langkah Pengerjaan
 
-4. Simpan konfigurasi lalu mulai ulang layanan daemon relay:
-   ```bash
-   service isc-dhcp-relay restart
-   ```
+#### Langkah 1 — Memastikan DHCP Server Aktif
 
-5. Verifikasi bahwa proses relay berjalan di sistem:
-   ```bash
-   ps aux | grep dhcrelay
-   ```
-   > **[TEMPAT SCREENSHOT 3.2]**: Tampilkan output `ps aux | grep dhcrelay` di Jichi yang memperlihatkan daemon aktif mendengarkan di interface yang telah diatur.
-
-6. Buka konsol klien di Network 2 (misalnya `Itadori`) dan Network 3 (misalnya `Ino`) untuk menguji perolehan IP:
-   ```bash
-   # Di klien Itadori:
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   ip route
-
-   # Di klien Ino:
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   ip route
-   ```
-   > **[TEMPAT SCREENSHOT 3.3]**: Tampilkan output perintah `udhcpc`, `ip -br a show eth0`, dan `ip route` pada node `Itadori` dan `Ino` yang membuktikan klien dari kedua subnet berbeda berhasil menerima lease IP dan rute gateway melalui relay Jichi.
-
-### B. Isi Skrip Konfigurasi dan Cara Menjalankannya
-
-Skrip disimpan di direktori root node **Jichi** pada file `/root/setup_soal3.sh`:
+**Console perangkat: Tengen**
 
 ```bash
-#!/bin/bash
-# ==========================================
-# Skrip Soal 3: Konfigurasi DHCP Relay di Jichi
-# Simpan di: /root/setup_soal3.sh
-# ==========================================
+service isc-dhcp-server status
+```
 
-echo "=== [1] Mengonfigurasi /etc/default/isc-dhcp-relay ==="
-cat << 'EOF' > /etc/default/isc-dhcp-relay
+**Hasil yang diharapkan:** `dhcpd is running`.
+
+**SS 3-01 — Status DHCP Server**
+
+> **[TEMPAT SCREENSHOT 3-01]**: output status service.
+
+#### Langkah 2 — Mengonfigurasi DHCP Relay
+
+**Console perangkat: Jichi**
+
+```bash
+nano /etc/default/isc-dhcp-relay
+```
+
+Isi:
+
+```text
 SERVERS="192.225.4.10"
 INTERFACES="eth2 eth3 eth4"
 OPTIONS=""
-EOF
-
-echo "=== [2] Menjalankan Ulang Layanan isc-dhcp-relay ==="
-service isc-dhcp-relay restart
-
-echo "=== [3] Verifikasi Status Proses DHCP Relay ==="
-ps aux | grep dhcrelay
 ```
 
-**Cara Menjalankan Skrip:**
-1. Buka konsol terminal node **Jichi**.
-2. Simpan skrip di `/root/setup_soal3.sh`.
-3. Berikan izin eksekusi:
-   ```bash
-   chmod +x /root/setup_soal3.sh
-   ```
-4. Jalankan skrip:
-   ```bash
-   /root/setup_soal3.sh
-   ```
-5. Pastikan daemon berjalan dengan memeriksa output `ps aux | grep dhcrelay`.
+**SS 3-02 — Konfigurasi Relay**
+
+> **[TEMPAT SCREENSHOT 3-02]**: `cat /etc/default/isc-dhcp-relay`.
+
+#### Langkah 3 — Menjalankan Relay
+
+**Console perangkat: Jichi**
+
+Periksa dulu apakah relay sudah aktif:
+
+```bash
+pgrep -a dhcrelay
+```
+
+Jika belum ada proses:
+
+```bash
+dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10
+```
+
+Verifikasi:
+
+```bash
+ps aux | grep '[d]hcrelay'
+```
+
+**Hasil yang diharapkan:** ada proses `dhcrelay` dengan server `192.225.4.10`. Jangan menjalankan relay kedua.
+
+**SS 3-03 — Proses Relay Aktif**
+
+> **[TEMPAT SCREENSHOT 3-03]**: output `ps aux | grep '[d]hcrelay'`.
+
+#### Langkah 4 — Menguji Lease Client Network 2
+
+**Console perangkat: Itadori**
+
+```bash
+udhcpc -i eth0 -n -q
+ip -br a show eth0
+ip route
+```
+
+**Hasil yang diharapkan:** IP `192.225.2.x/24` dan `default via 192.225.2.1`.
+
+**SS 3-04 — Lease Client Network 2**
+
+> **[TEMPAT SCREENSHOT 3-04]**: output di Itadori.
+
+#### Langkah 5 — Menguji Lease Client Network 3
+
+**Console perangkat: Ino**
+
+```bash
+udhcpc -i eth0 -n -q
+ip -br a show eth0
+ip route
+```
+
+**Hasil yang diharapkan:** IP `192.225.3.x/24` dan `default via 192.225.3.1`.
+
+**SS 3-05 — Lease Client Network 3**
+
+> **[TEMPAT SCREENSHOT 3-05]**: output di Ino.
+
+### Catatan Pengujian Ulang
+
+Sebelum menjalankan `dhcrelay`, selalu cek `pgrep -a dhcrelay` agar tidak ada proses ganda. Jika client `no lease`, periksa relay di Jichi, service di Tengen, dan default route Tengen.
+
+### Kesimpulan
+
+Jichi berhasil berfungsi sebagai DHCP Relay menuju Tengen. Client Network 2 dan Network 3 memperoleh lease dan gateway sesuai subnet masing-masing melalui relay.
+
+### Otomatisasi Menggunakan Script
+
+#### Script DHCP Relay pada Jichi
+
+**Cara membuat script**
+
+Pada console Jichi, buat file `/root/soal3_jichi.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal3_jichi.sh
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal3_jichi.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal3_jichi.sh
+```
+
+**Output yang diharapkan:** proses `dhcrelay -i eth2 -i eth3 -i eth4 192.225.4.10` tampil.
+
+**SS 3-06 — Output Script Soal 3**
+
+> **[TEMPAT SCREENSHOT 3-06]**: hasil `bash /root/soal3_jichi.sh`.
+
+#### Script Client (Itadori)
+
+**Cara membuat script**
+
+Pada console Itadori, buat file `/root/get_ip.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/get_ip.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+sh /root/get_ip.sh
+```
+
+**SS 3-07 — Output Script Client**
+
+> **[TEMPAT SCREENSHOT 3-07]**: hasil `sh /root/get_ip.sh` di Itadori.
+
+**Urutan Demo:** (1) Tengen: server aktif, (2) Jichi: `bash /root/soal3_jichi.sh`, (3) Itadori dan Ino: minta lease, (4) cek IP dan route.
 
 ---
 
-## SOAL 4: Pembagian DHCP Class dan Dua Pool Alokasi di Network 2
+# Soal 4
+## DHCP Class dan Dua Pool pada Network 2
 
-### A. Langkah-Langkah Pengerjaan Manual
+Atur dua pool pada Network 2: Pool 1 (`192.225.2.10–192.225.2.35`) untuk Itadori dan Fushiguro, Pool 2 (`192.225.2.70–192.225.2.95`) untuk Zenin dan Okkotsu. Rentang `192.225.2.36–192.225.2.69` tidak boleh dialokasikan. Pisahkan kedua kelompok dengan DHCP class berdasarkan MAC address.
 
-1. Catat MAC address kartu jaringan `eth0` milik seluruh klien di Network 2:
-   * `Itadori`: `02:42:33:e9:7e:00`
-   * `Fushiguro`: `02:42:7b:f1:68:00`
-   * `Zenin`: `02:42:6b:7c:b7:00`
-   * `Okkotsu`: `02:42:9f:c2:73:00`
+### Langkah Pengerjaan
 
-2. Buka terminal console node **Tengen**.
-3. Edit file konfigurasi DHCP `/etc/dhcp/dhcpd.conf`:
-   ```bash
-   nano /etc/dhcp/dhcpd.conf
-   ```
+#### Langkah 1 — Mencatat MAC Address Client Network 2
 
-4. Tambahkan deklarasi `class` pada bagian atas file konfigurasi (sebelum blok deklarasi subnet):
-   ```text
-   # Class Pool 1 untuk Itadori dan Fushiguro
-   class "pool1-clients" {
-       match if substring(hardware, 1, 6) = 02:42:33:e9:7e:00 or
-                substring(hardware, 1, 6) = 02:42:7b:f1:68:00;
-   }
-
-   # Class Pool 2 untuk Zenin dan Okkotsu
-   class "pool2-clients" {
-       match if substring(hardware, 1, 6) = 02:42:6b:7c:b7:00 or
-                substring(hardware, 1, 6) = 02:42:9f:c2:73:00;
-   }
-   ```
-
-5. Modifikasi blok `subnet 192.225.2.0 netmask 255.255.255.0` agar memiliki dua pool terpisah yang membatasi alokasi IP berdasarkan keanggotaan kelas, serta mengosongkan rentang `.2.36` sampai `.2.69`:
-   ```text
-   subnet 192.225.2.0 netmask 255.255.255.0 {
-       option routers 192.225.2.1;
-       option subnet-mask 255.255.255.0;
-       option broadcast-address 192.225.2.255;
-       option domain-name-servers 192.225.1.2, 192.225.1.3;
-       option domain-search "K28.com";
-
-       # Pool 1 (192.225.2.10 - 192.225.2.35) untuk Itadori & Fushiguro
-       pool {
-           allow members of "pool1-clients";
-           range 192.225.2.10 192.225.2.35;
-       }
-
-       # Pool 2 (192.225.2.70 - 192.225.2.95) untuk Zenin & Okkotsu
-       pool {
-           allow members of "pool2-clients";
-           range 192.225.2.70 192.225.2.95;
-       }
-   }
-   ```
-   > **[TEMPAT SCREENSHOT 4.1]**: Tampilkan potongan file `/etc/dhcp/dhcpd.conf` pada definisi `class "pool1-clients"`, `class "pool2-clients"`, serta blok Pool 1 dan Pool 2 di subnet Network 2.
-
-6. Validasi sintaks dan restart ISC DHCP Server di node Tengen:
-   ```bash
-   dhcpd -t -cf /etc/dhcp/dhcpd.conf
-   service isc-dhcp-server restart
-   ```
-
-7. Uji perolehan IP pada klien Pool 1. Buka konsol node **Itadori** dan **Fushiguro**:
-   ```bash
-   killall udhcpc 2>/dev/null
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   ```
-   > **[TEMPAT SCREENSHOT 4.2]**: Tampilkan output `ip -br a` pada klien `Itadori` (`192.225.2.10`) dan `Fushiguro` (`192.225.2.11`) yang membuktikan keduanya memperoleh IP dalam rentang Pool 1 (`192.225.2.10`–`.2.35`).
-
-8. Uji perolehan IP pada klien Pool 2. Buka konsol node **Zenin** dan **Okkotsu**:
-   ```bash
-   killall udhcpc 2>/dev/null
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   ```
-   > **[TEMPAT SCREENSHOT 4.3]**: Tampilkan output `ip -br a` pada klien `Zenin` (`192.225.2.70`) dan `Okkotsu` (`192.225.2.71`) yang membuktikan keduanya memperoleh IP dalam rentang Pool 2 (`192.225.2.70`–`.2.95`), serta membuktikan rentang tengah `.2.36` s/d `.2.69` terisolasi dan tidak dialokasikan.
-
-### B. Isi Skrip Konfigurasi dan Cara Menjalankannya
-
-Skrip disimpan di direktori root node **Tengen** pada file `/root/setup_soal4.sh`:
+**Console perangkat: Itadori, Fushiguro, Zenin, Okkotsu**
 
 ```bash
-#!/bin/bash
-# ==========================================
-# Skrip Soal 4: Konfigurasi DHCP Class dan Dua Pool Network 2
-# Simpan di: /root/setup_soal4.sh
-# ==========================================
+ip -br link show eth0
+```
 
-cat << 'EOF' > /etc/dhcp/dhcpd.conf
-ddns-update-style none;
-authoritative;
+**Hasil yang diharapkan:**
 
-option domain-name "K28.com";
-option domain-name-servers 192.225.1.2, 192.225.1.3;
+| Client | MAC eth0 | Kelompok |
+|---|---|---|
+| Itadori | `02:42:33:e9:7e:00` | Pool 1 |
+| Fushiguro | `02:42:7b:f1:68:00` | Pool 1 |
+| Zenin | `02:42:6b:7c:b7:00` | Pool 2 |
+| Okkotsu | `02:42:9f:c2:73:00` | Pool 2 |
 
-# Definisi Kelas Klien Network 2 (Soal 4)
+**SS 4-01 — MAC Address Client**
+
+> **[TEMPAT SCREENSHOT 4-01]**: output `ip -br link show eth0` di keempat client.
+
+#### Langkah 2 — Menambahkan Class dan Pool
+
+**Console perangkat: Tengen**
+
+```bash
+nano /etc/dhcp/dhcpd.conf
+```
+
+Tambahkan class sebelum blok subnet:
+
+```text
 class "pool1-clients" {
     match if substring(hardware, 1, 6) = 02:42:33:e9:7e:00 or
              substring(hardware, 1, 6) = 02:42:7b:f1:68:00;
@@ -498,12 +561,11 @@ class "pool2-clients" {
     match if substring(hardware, 1, 6) = 02:42:6b:7c:b7:00 or
              substring(hardware, 1, 6) = 02:42:9f:c2:73:00;
 }
+```
 
-# Subnet 4 lokal Data Center
-subnet 192.225.4.0 netmask 255.255.255.0 {
-}
+Ubah blok `subnet 192.225.2.0` menjadi:
 
-# Subnet 2 Divisi A dengan Dua Pool Alokasi
+```text
 subnet 192.225.2.0 netmask 255.255.255.0 {
     option routers 192.225.2.1;
     option subnet-mask 255.255.255.0;
@@ -521,161 +583,164 @@ subnet 192.225.2.0 netmask 255.255.255.0 {
         range 192.225.2.70 192.225.2.95;
     }
 }
-
-# Subnet 3 Divisi B
-subnet 192.225.3.0 netmask 255.255.255.0 {
-    option routers 192.225.3.1;
-    option subnet-mask 255.255.255.0;
-    option broadcast-address 192.225.3.255;
-    option domain-name-servers 192.225.1.2, 192.225.1.3;
-    option domain-search "K28.com";
-}
-EOF
-
-dhcpd -t -cf /etc/dhcp/dhcpd.conf
-service isc-dhcp-server restart
 ```
 
-**Cara Menjalankan Skrip:**
-1. Buka konsol terminal node **Tengen**.
-2. Simpan skrip di `/root/setup_soal4.sh`.
-3. Berikan izin eksekusi dan jalankan:
-   ```bash
-   chmod +x /root/setup_soal4.sh
-   /root/setup_soal4.sh
-   ```
-4. Buka terminal masing-masing klien di Network 2 (`Itadori`, `Fushiguro`, `Zenin`, `Okkotsu`) dan minta IP baru:
-   ```bash
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   ```
+**SS 4-02 — Class dan Pool di dhcpd.conf**
+
+> **[TEMPAT SCREENSHOT 4-02]**: bagian `class "pool1-clients"`, `class "pool2-clients"`, dan dua blok `pool` pada subnet Network 2.
+
+#### Langkah 3 — Validasi dan Restart Service
+
+**Console perangkat: Tengen**
+
+```bash
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
+service isc-dhcp-server restart
+service isc-dhcp-server status
+```
+
+**Hasil yang diharapkan:** tanpa error dan `dhcpd is running`.
+
+**SS 4-03 — Validasi dan Status**
+
+> **[TEMPAT SCREENSHOT 4-03]**: output ketiga perintah.
+
+#### Langkah 4 — Menguji Client Pool 1
+
+**Console perangkat: Itadori dan Fushiguro**
+
+```bash
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+ip -br a show eth0
+```
+
+**Hasil yang diharapkan:** IP berada di `192.225.2.10`–`192.225.2.35`.
+
+**SS 4-04 — Client Pool 1**
+
+> **[TEMPAT SCREENSHOT 4-04]**: output di Itadori dan Fushiguro.
+
+#### Langkah 5 — Menguji Client Pool 2
+
+**Console perangkat: Zenin dan Okkotsu**
+
+```bash
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+ip -br a show eth0
+```
+
+**Hasil yang diharapkan:** IP berada di `192.225.2.70`–`192.225.2.95`.
+
+**SS 4-05 — Client Pool 2**
+
+> **[TEMPAT SCREENSHOT 4-05]**: output di Zenin dan Okkotsu.
+
+#### Langkah 6 — Membuktikan Rentang `.2.36`–`.2.69` Tidak Terpakai
+
+**Console perangkat: Tengen**
+
+```bash
+grep "^lease" /var/lib/dhcp/dhcpd.leases | awk '{print $2}' | awk -F. '$3==2 && $4>=36 && $4<=69'
+```
+
+**Hasil yang diharapkan:** output kosong.
+
+**SS 4-06 — Rentang Terlarang Kosong**
+
+> **[TEMPAT SCREENSHOT 4-06]**: output perintah di atas (kosong) beserta `grep "^lease" /var/lib/dhcp/dhcpd.leases` sebagai pembanding.
+
+### Catatan Pengujian Ulang
+
+Jika client masih memegang IP lama, jalankan `ip addr flush dev eth0` sebelum `udhcpc`. IP yang diperoleh tiap client bisa berbeda antar pengujian selama masih dalam rentang pool-nya.
+
+### Kesimpulan
+
+DHCP class berbasis MAC address berhasil memisahkan Network 2 menjadi Pool 1 dan Pool 2. Itadori dan Fushiguro memperoleh IP `.2.10`–`.2.35`, Zenin dan Okkotsu memperoleh IP `.2.70`–`.2.95`, dan rentang `.2.36`–`.2.69` tidak pernah dialokasikan.
+
+### Otomatisasi Menggunakan Script
+
+#### Script DHCP Class dan Pool pada Tengen
+
+**Cara membuat script**
+
+Pada console Tengen, buat file `/root/soal4_tengen.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal4_tengen.sh
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal4_tengen.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal4_tengen.sh
+```
+
+**Output yang diharapkan:** `dhcpd -t` tanpa error dan `dhcpd is running`.
+
+**SS 4-07 — Output Script Soal 4**
+
+> **[TEMPAT SCREENSHOT 4-07]**: hasil `bash /root/soal4_tengen.sh`.
+
+#### Script Client
+
+Jalankan pada Itadori, Fushiguro, Zenin, dan Okkotsu:
+
+```bash
+sh /root/get_ip.sh
+```
+
+> Ganti dengan nama script client yang kamu pakai jika berbeda (mis. `soal7_klien.sh`).
+
+**Urutan Demo:** (1) Tengen: `bash /root/soal4_tengen.sh`, (2) Jichi: pastikan relay aktif, (3) keempat client: minta lease, (4) Tengen: cek rentang terlarang.
 
 ---
 
-## SOAL 5: Pengaturan Durasi Lease Time (Short Lease 30 Menit & Long Lease 12 Jam) pada Network 3
+# Soal 5
+## Short Lease dan Long Lease pada Network 3
 
-### A. Langkah-Langkah Pengerjaan Manual
+Pada Network 3, berikan short lease 30 menit (1800 detik) kepada Ino dan Kusakabe, serta long lease 12 jam (43200 detik) kepada Miwa. Gunakan pool short `192.225.3.10–192.225.3.89` dan pool long `192.225.3.100–192.225.3.199`. Sesuaikan `default-lease-time` dan `max-lease-time` tiap class, serta berikan DNS `192.225.1.2`, `192.225.1.3`, dan domain-search `K28.com`.
 
-1. Catat MAC address kartu jaringan `eth0` milik klien di Network 3:
-   * `Ino`: `02:42:2c:11:46:00`
-   * `Kusakabe`: `02:42:94:28:a5:00`
-   * `miwa`: `02:42:84:4d:0b:00`
+### Langkah Pengerjaan
 
-2. Buka terminal console node **Tengen**.
-3. Edit file konfigurasi DHCP `/etc/dhcp/dhcpd.conf`:
-   ```bash
-   nano /etc/dhcp/dhcpd.conf
-   ```
+#### Langkah 1 — Mencatat MAC Address Client Network 3
 
-4. Tambahkan pendefinisian class lease time:
-   * Class `short-lease-clients` untuk Ino dan Kusakabe dengan waktu sewa 30 menit (`1800 detik`).
-   * Class `long-lease-clients` untuk Miwa dengan waktu sewa 12 jam (`43200 detik`).
-   ```text
-   # Class Short Lease: 30 menit (1800 detik)
-   class "short-lease-clients" {
-       match if substring(hardware, 1, 6) = 02:42:2c:11:46:00 or
-                substring(hardware, 1, 6) = 02:42:94:28:a5:00;
-       default-lease-time 1800;
-       max-lease-time 1800;
-   }
-
-   # Class Long Lease: 12 jam (43200 detik)
-   class "long-lease-clients" {
-       match if substring(hardware, 1, 6) = 02:42:84:4d:0b:00;
-       default-lease-time 43200;
-       max-lease-time 43200;
-   }
-   ```
-
-5. Perbarui blok deklarasi `subnet 192.225.3.0 netmask 255.255.255.0` agar memiliki dua pool terpisah:
-   * Pool Short Lease: Rentang `192.225.3.10` – `192.225.3.89` untuk anggota `short-lease-clients`.
-   * Pool Long Lease: Rentang `192.225.3.100` – `192.225.3.199` untuk anggota `long-lease-clients`.
-   * Options: DNS Server `192.225.1.2`, `192.225.1.3`, dan domain search `K28.com`.
-   ```text
-   subnet 192.225.3.0 netmask 255.255.255.0 {
-       option routers 192.225.3.1;
-       option subnet-mask 255.255.255.0;
-       option broadcast-address 192.225.3.255;
-       option domain-name-servers 192.225.1.2, 192.225.1.3;
-       option domain-search "K28.com";
-
-       # Pool Short Lease (Ino & Kusakabe)
-       pool {
-           allow members of "short-lease-clients";
-           range 192.225.3.10 192.225.3.89;
-       }
-
-       # Pool Long Lease (Miwa)
-       pool {
-           allow members of "long-lease-clients";
-           range 192.225.3.100 192.225.3.199;
-       }
-   }
-   ```
-   > **[TEMPAT SCREENSHOT 5.1]**: Tampilkan potongan file `/etc/dhcp/dhcpd.conf` pada class `short-lease-clients`, `long-lease-clients`, dan kedua blok pool di Network 3.
-
-6. Simpan perubahan file lalu restart layanan DHCP Server di Tengen:
-   ```bash
-   dhcpd -t -cf /etc/dhcp/dhcpd.conf
-   service isc-dhcp-server restart
-   ```
-
-7. Uji pada klien short lease. Buka konsol **Ino** dan **Kusakabe**:
-   ```bash
-   killall udhcpc 2>/dev/null
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   cat /etc/resolv.conf
-   ```
-   > **[TEMPAT SCREENSHOT 5.2]**: Tampilkan output `ip -br a show eth0` pada klien `Ino` atau `Kusakabe` (menerima IP rentang `.3.10`–`.3.89`) beserta output `cat /etc/resolv.conf` yang menampilkan nameserver `192.225.1.2`, `192.225.1.3` dan search domain `K28.com`.
-
-8. Uji pada klien long lease. Buka konsol **miwa**:
-   ```bash
-   killall udhcpc 2>/dev/null
-   udhcpc -i eth0 -n -q
-   ip -br a show eth0
-   cat /etc/resolv.conf
-   ```
-   > **[TEMPAT SCREENSHOT 5.3]**: Tampilkan output `ip -br a show eth0` pada klien `miwa` (menerima IP rentang `.3.100`–`.3.199`).
-
-9. Verifikasi pembuktian durasi sewa (*lease time*) pada database server DHCP di node **Tengen**:
-   ```bash
-   cat /var/lib/dhcp/dhcpd.leases | grep -E "lease|starts|ends|hardware" | tail -n 25
-   ```
-   > **[TEMPAT SCREENSHOT 5.4]**: Tampilkan isi `/var/lib/dhcp/dhcpd.leases` di node Tengen yang memperlihatkan selisih waktu `starts` dan `ends`:
-   > * Klien Short Lease (`Ino` / `Kusakabe`): selisih waktu sewa tepat **30 menit** (1800 detik).
-   > * Klien Long Lease (`Miwa`): selisih waktu sewa tepat **12 jam** (43200 detik).
-
-### B. Isi Skrip Konfigurasi dan Cara Menjalankannya
-
-Skrip disimpan di direktori root node **Tengen** pada file `/root/setup_soal5.sh`:
+**Console perangkat: Ino, Kusakabe, Miwa**
 
 ```bash
-#!/bin/bash
-# ==========================================
-# Skrip Soal 5: Konfigurasi Short Lease & Long Lease Network 3
-# Simpan di: /root/setup_soal5.sh
-# ==========================================
+ip -br link show eth0
+```
 
-cat << 'EOF' > /etc/dhcp/dhcpd.conf
-ddns-update-style none;
-authoritative;
+**Hasil yang diharapkan:**
 
-option domain-name "K28.com";
-option domain-name-servers 192.225.1.2, 192.225.1.3;
+| Client | MAC eth0 | Kelompok |
+|---|---|---|
+| Ino | `02:42:2c:11:46:00` | Short lease |
+| Kusakabe | `02:42:94:28:a5:00` | Short lease |
+| Miwa | `02:42:84:4d:0b:00` | Long lease |
 
-# Definisi Kelas Network 2 (Soal 4)
-class "pool1-clients" {
-    match if substring(hardware, 1, 6) = 02:42:33:e9:7e:00 or
-             substring(hardware, 1, 6) = 02:42:7b:f1:68:00;
-}
+**SS 5-01 — MAC Address Client Network 3**
 
-class "pool2-clients" {
-    match if substring(hardware, 1, 6) = 02:42:6b:7c:b7:00 or
-             substring(hardware, 1, 6) = 02:42:9f:c2:73:00;
-}
+> **[TEMPAT SCREENSHOT 5-01]**: output `ip -br link show eth0` di ketiga client.
 
-# Definisi Kelas Network 3 (Soal 5)
+#### Langkah 2 — Menambahkan Class Lease Time
+
+**Console perangkat: Tengen**
+
+```bash
+nano /etc/dhcp/dhcpd.conf
+```
+
+Tambahkan sebelum blok subnet:
+
+```text
 class "short-lease-clients" {
     match if substring(hardware, 1, 6) = 02:42:2c:11:46:00 or
              substring(hardware, 1, 6) = 02:42:94:28:a5:00;
@@ -688,31 +753,15 @@ class "long-lease-clients" {
     default-lease-time 43200;
     max-lease-time 43200;
 }
+```
 
-# Network 4: Subnet Lokal Data Center tanpa pool dinamis (Soal 2)
-subnet 192.225.4.0 netmask 255.255.255.0 {
-}
+#### Langkah 3 — Menambahkan Dua Pool pada Network 3
 
-# Network 2: Subnet Divisi A (Soal 4)
-subnet 192.225.2.0 netmask 255.255.255.0 {
-    option routers 192.225.2.1;
-    option subnet-mask 255.255.255.0;
-    option broadcast-address 192.225.2.255;
-    option domain-name-servers 192.225.1.2, 192.225.1.3;
-    option domain-search "K28.com";
+**Console perangkat: Tengen**
 
-    pool {
-        allow members of "pool1-clients";
-        range 192.225.2.10 192.225.2.35;
-    }
+Ubah blok `subnet 192.225.3.0` menjadi:
 
-    pool {
-        allow members of "pool2-clients";
-        range 192.225.2.70 192.225.2.95;
-    }
-}
-
-# Network 3: Subnet Divisi B (Soal 5)
+```text
 subnet 192.225.3.0 netmask 255.255.255.0 {
     option routers 192.225.3.1;
     option subnet-mask 255.255.255.0;
@@ -730,25 +779,123 @@ subnet 192.225.3.0 netmask 255.255.255.0 {
         range 192.225.3.100 192.225.3.199;
     }
 }
-EOF
-
-dhcpd -t -cf /etc/dhcp/dhcpd.conf
-service isc-dhcp-server restart
 ```
 
-**Cara Menjalankan Skrip:**
-1. Buka konsol terminal node **Tengen**.
-2. Simpan skrip di `/root/setup_soal5.sh`.
-3. Berikan izin eksekusi dan jalankan:
-   ```bash
-   chmod +x /root/setup_soal5.sh
-   /root/setup_soal5.sh
-   ```
-4. Buka terminal klien di Network 3 (`Ino`, `Kusakabe`, `miwa`) dan jalankan skrip permohonan IP `/root/get_ip.sh`:
-   ```sh
-   sh /root/get_ip.sh
-   ```
+**SS 5-02 — Class dan Pool Network 3**
 
+> **[TEMPAT SCREENSHOT 5-02]**: bagian `class "short-lease-clients"`, `class "long-lease-clients"`, dan dua blok `pool` Network 3.
+
+#### Langkah 4 — Validasi dan Restart Service
+
+**Console perangkat: Tengen**
+
+```bash
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
+service isc-dhcp-server restart
+service isc-dhcp-server status
+```
+
+**SS 5-03 — Validasi dan Status**
+
+> **[TEMPAT SCREENSHOT 5-03]**: output ketiga perintah.
+
+#### Langkah 5 — Menguji Client Short Lease
+
+**Console perangkat: Ino dan Kusakabe**
+
+```bash
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+ip -br a show eth0
+cat /etc/resolv.conf
+```
+
+**Hasil yang diharapkan:** IP di `192.225.3.10`–`192.225.3.89`, lease time sekitar `1800`, serta `search K28.com`, `nameserver 192.225.1.2`, `nameserver 192.225.1.3`.
+
+**SS 5-04 — Client Short Lease**
+
+> **[TEMPAT SCREENSHOT 5-04]**: output di Ino dan Kusakabe.
+
+#### Langkah 6 — Menguji Client Long Lease
+
+**Console perangkat: Miwa**
+
+```bash
+ip addr flush dev eth0
+udhcpc -i eth0 -n -q
+ip -br a show eth0
+cat /etc/resolv.conf
+```
+
+**Hasil yang diharapkan:** IP di `192.225.3.100`–`192.225.3.199` dan lease time sekitar `43200`.
+
+**SS 5-05 — Client Long Lease**
+
+> **[TEMPAT SCREENSHOT 5-05]**: output di Miwa.
+
+#### Langkah 7 — Membuktikan Durasi Lease di Server
+
+**Console perangkat: Tengen**
+
+```bash
+grep -E "^lease|starts|ends|hardware ethernet" /var/lib/dhcp/dhcpd.leases | tail -n 30
+```
+
+**Hasil yang diharapkan:** selisih `starts` dan `ends` untuk Ino/Kusakabe tepat 30 menit, dan untuk Miwa tepat 12 jam.
+
+> Lease time yang tampil di `udhcpc` adalah sisa waktu, bukan nilai penuh (mis. `1714` berarti lease 1800 yang sudah berjalan sekitar 86 detik).
+
+**SS 5-06 — Bukti Durasi Lease**
+
+> **[TEMPAT SCREENSHOT 5-06]**: isi `dhcpd.leases` yang memperlihatkan selisih `starts`–`ends` Short Lease (30 menit) dan Long Lease (12 jam).
+
+### Catatan Pengujian Ulang
+
+`dhcpd.leases` adalah jurnal, jadi IP yang sama dapat muncul berulang setelah renew. Baca entri paling bawah untuk status terbaru. Jika client belum memakai konfigurasi baru, jalankan `ip addr flush dev eth0` lalu `udhcpc` lagi.
+
+### Kesimpulan
+
+Class berbasis MAC address berhasil membedakan lease time Network 3. Ino dan Kusakabe memperoleh short lease 1800 detik pada pool `.3.10`–`.3.89`, sedangkan Miwa memperoleh long lease 43200 detik pada pool `.3.100`–`.3.199`, dengan DNS dan domain-search `K28.com` sesuai ketentuan.
+
+### Otomatisasi Menggunakan Script
+
+#### Script Short/Long Lease pada Tengen
+
+**Cara membuat script**
+
+Pada console Tengen, buat file `/root/soal5_tengen.sh`:
+
+```bash
+# TEMPEL ISI: cat /root/soal5_tengen.sh
+```
+
+Berikan izin eksekusi:
+
+```bash
+chmod +x /root/soal5_tengen.sh
+```
+
+**Cara menjalankan script**
+
+```bash
+bash /root/soal5_tengen.sh
+```
+
+**Output yang diharapkan:** `dhcpd -t` tanpa error dan `dhcpd is running`.
+
+**SS 5-07 — Output Script Soal 5**
+
+> **[TEMPAT SCREENSHOT 5-07]**: hasil `bash /root/soal5_tengen.sh`.
+
+#### Script Client
+
+Jalankan pada Ino, Kusakabe, dan Miwa:
+
+```bash
+ip addr flush dev eth0; udhcpc -i eth0 -n -q; ip -br a show eth0; cat /etc/resolv.conf
+```
+
+**Urutan Demo:** (1) Tengen: `bash /root/soal5_tengen.sh`, (2) Jichi: pastikan relay aktif, (3) Ino, Kusakabe, Miwa: minta lease, (4) Tengen: cek `dhcpd.leases`.
 
 ---
 ### Soal 6
