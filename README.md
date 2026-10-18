@@ -1862,7 +1862,7 @@ chmod +x /root/soal7_cek_server.sh
 
 **Fungsi:** menampilkan alamat IP server, routing, daftar lease yang tercatat, dan status layanan DHCP server untuk membantu verifikasi hasil pengujian.
 
-#### Urutan Menjalankan Script untuk Demonstrasi
+#### Urutan Menjalankan Script untuk 
 
 Script dijalankan melalui console masing-masing perangkat dengan urutan berikut:
 
@@ -2098,7 +2098,7 @@ Setelah pengujian selesai, periksa hasil capture pada Tengen.
 
 **Catatan:** Script menggunakan batas waktu maksimal 90 detik sesuai instruksi terminal. Client harus meminta lease ketika proses capture masih aktif.
 
-### Urutan Script untuk Demonstrasi
+### Urutan Script untuk 
 
 1. **Jichi:** periksa DHCP Relay menggunakan `pgrep -a dhcrelay; ip -br addr | grep -E "eth[2-4]"`.
 2. **Tengen:** periksa DHCP Server menggunakan `service isc-dhcp-server status`.
@@ -4305,7 +4305,8 @@ server {
 
 **SS 16-01 — Konfigurasi Gojo**
 
-> **[TEMPAT SCREENSHOT 16-01]**: `cat /etc/nginx/conf.d/gojo.conf`.
+<img width="561" height="427" alt="image" src="https://github.com/user-attachments/assets/39a3e9a0-8433-4443-8d10-62e84ec124e5" />
+
 
 #### Langkah 3 — Validasi dan Menjalankan Nginx
 
@@ -4320,8 +4321,8 @@ pgrep -x nginx >/dev/null && nginx -s reload || service nginx start
 **Hasil yang diharapkan:** `nginx -t` berstatus `successful`.
 
 **SS 16-02 — Validasi Nginx**
+<img width="648" height="206" alt="image" src="https://github.com/user-attachments/assets/b60866af-9b3a-4a1d-97a6-f3c53e435060" />
 
-> **[TEMPAT SCREENSHOT 16-02]**: output `nginx -t` dan `pgrep -a nginx`.
 
 #### Langkah 4 — Menguji Root (`/`) ke Maki/Panda
 
@@ -4334,8 +4335,10 @@ for i in 1 2 3 4; do curl -s http://jujutsu.k28.com/; echo; done
 **Hasil yang diharapkan:** respons bergantian dari Maki dan Panda.
 
 **SS 16-03 — Root Dibalas Maki/Panda**
+<img width="705" height="187" alt="image" src="https://github.com/user-attachments/assets/61eb6fcb-d2d6-4eb3-aad2-4f8320eb74bf" />
 
-> **[TEMPAT SCREENSHOT 16-03]**: output loop `curl` di Itadori dan Ino.
+<img width="702" height="162" alt="image" src="https://github.com/user-attachments/assets/176cd4c7-7d6b-4054-902f-26ff9ef3eefc" />
+
 
 #### Langkah 5 — Menguji `/api` ke Nanami/Todo
 
@@ -4349,7 +4352,9 @@ for i in 1 2 3 4; do curl -s http://jujutsu.k28.com/api; echo; done
 
 **SS 16-04 — `/api` Dibalas Nanami/Todo**
 
-> **[TEMPAT SCREENSHOT 16-04]**: output loop `curl` ke `/api`.
+<img width="735" height="247" alt="image" src="https://github.com/user-attachments/assets/8d9afb89-8ad3-4947-ab56-af8b5a4b1cdb" />
+<img width="746" height="240" alt="image" src="https://github.com/user-attachments/assets/1f177f1b-1bf5-44fa-9392-50808ab6e06a" />
+
 
 ### Catatan Pengujian Ulang
 
@@ -4368,7 +4373,27 @@ Gojo berhasil menjadi gerbang publik dengan Path-Based Routing. Request `/` diba
 Pada console Gojo, buat file `/root/soal16_gojo.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal16_gojo.sh
+#!/bin/bash
+set -e
+export DEBIAN_FRONTEND=noninteractive
+
+MAKI_IP="192.225.4.3"
+PANDA_IP="192.225.4.4"
+GETO_IP="192.225.4.2"
+
+apt-get update
+apt-get install -y nginx curl
+
+cat > /etc/nginx/sites-available/default <<NGINX
+upstream frontend_cluster {
+    server ${MAKI_IP}:80;
+    server ${PANDA_IP}:80;
+}
+
+server {
+    listen 80;
+    server_name jujutsu.k28.com www.jujutsu.k28.com;
+
 ```
 
 ```bash
@@ -4385,7 +4410,8 @@ bash /root/soal16_gojo.sh
 
 **SS 16-05 — Output Script Soal 16**
 
-> **[TEMPAT SCREENSHOT 16-05]**: hasil `bash /root/soal16_gojo.sh`.
+<img width="643" height="363" alt="image" src="https://github.com/user-attachments/assets/298b0734-f0fc-4cac-b4d7-b88b184f1172" />
+
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
@@ -4417,7 +4443,7 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
 **SS 17-01 — Header di Gojo**
 
-> **[TEMPAT SCREENSHOT 17-01]**: potongan `gojo.conf` yang memperlihatkan kedua header.
+<img width="805" height="563" alt="image" src="https://github.com/user-attachments/assets/598e1ceb-15bb-4bd0-82c9-e688b53705b9" />
 
 #### Langkah 2 — Mempercayai Hanya Proxy Terpercaya di Geto
 
@@ -4446,7 +4472,8 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
 **SS 17-02 — Trust Proxy di Geto**
 
-> **[TEMPAT SCREENSHOT 17-02]**: potongan `api_cluster.conf` yang memperlihatkan `set_real_ip_from` dan header.
+<img width="655" height="446" alt="image" src="https://github.com/user-attachments/assets/97db43b0-a4fc-4118-bd25-8bfec4445be8" />
+
 
 #### Langkah 3 — Menyimpan `client_ip` di Script API
 
@@ -4482,7 +4509,11 @@ nginx -t && nginx -s reload
 
 **SS 17-04 — Validasi Nginx**
 
-> **[TEMPAT SCREENSHOT 17-04]**: output `nginx -t` di Gojo dan Geto.
+<img width="626" height="138" alt="image" src="https://github.com/user-attachments/assets/47f3f844-9364-4575-9ff7-cf7d68cbe154" />
+
+
+<img width="621" height="128" alt="image" src="https://github.com/user-attachments/assets/ec375bef-5246-4a72-bbd7-62517ede8f12" />
+
 
 #### Langkah 5 — Mengirim Request dari Network 2 dan Network 3
 
@@ -4497,7 +4528,9 @@ curl -s http://jujutsu.k28.com/api
 
 **SS 17-05 — Request dari Client**
 
-> **[TEMPAT SCREENSHOT 17-05]**: IP client dan output `curl` di Itadori dan Ino.
+<img width="452" height="260" alt="image" src="https://github.com/user-attachments/assets/efc46f4d-8bfa-4d6a-b9f9-83401598629a" />
+<img width="487" height="287" alt="image" src="https://github.com/user-attachments/assets/3352bf99-7335-4e49-bf9f-a025c1067537" />
+
 
 #### Langkah 6 — Memeriksa Database
 
@@ -4511,7 +4544,8 @@ mariadb -e "SELECT hostname, client_ip, created_at FROM db_shibuya_K28.request_l
 
 **SS 17-06 — `client_ip` di Database**
 
-> **[TEMPAT SCREENSHOT 17-06]**: output `SELECT` di Yaga.
+><img width="892" height="408" alt="image" src="https://github.com/user-attachments/assets/7ea3a9ea-e0c4-4665-acc9-2813b9cc89d0" />
+
 
 ### Catatan Pengujian Ulang
 
@@ -4530,11 +4564,51 @@ Gojo dan Geto berhasil meneruskan `X-Real-IP` dan `X-Forwarded-For`, dan Geto ha
 Pada console Gojo, buat `/root/soal17_gojo.sh`, dan pada Geto buat `/root/soal17_geto.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal17_gojo.sh
+#!/bin/bash
+set -e
+
+CONF="/etc/nginx/sites-available/default"
+
+echo "=== Setup Soal 17: Forward Client IP ==="
+
+cp "$CONF" /root/soal17_gojo_before.conf
+
+# Ganti X-Forwarded-For agar Gojo mengirim IP klien yang dilihatnya
+sed -i \
+  's/proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;/proxy_set_he>
+  "$CONF"
+
+# Pastikan X-Real-IP tersedia
+if ! grep -q 'proxy_set_header X-Real-IP \$remote_addr;' "$CONF"; then
+    echo "ERROR: Header X-Real-IP tidak ditemukan."
+    cp /root/soal17_gojo_before.conf "$CONF"
+    exit 1
+fi
+
 ```
 
 ```bash
-# TEMPEL ISI: cat /root/soal17_geto.sh
+#!/bin/bash
+set -e
+
+echo "=== Setup Soal 17: Trusted Proxy Geto ==="
+
+mkdir -p /etc/nginx/conf.d
+
+if [ -f /etc/nginx/conf.d/trusted_proxy.conf ]; then
+    cp /etc/nginx/conf.d/trusted_proxy.conf \
+       /root/soal17_geto_before.conf
+fi
+
+cat > /etc/nginx/conf.d/trusted_proxy.conf <<'CONF'
+# Only trust the reverse proxy Gojo
+set_real_ip_from 192.225.1.4;
+real_ip_header X-Real-IP;
+real_ip_recursive off;
+CONF
+
+nginx -t
+
 ```
 
 ```bash
@@ -4550,10 +4624,6 @@ bash /root/soal17_geto.sh      # di Geto
 ```
 
 **Fungsi:** menambahkan header IP klien dan trust proxy, lalu memvalidasi dan me-reload Nginx. Backup sebelum perubahan tersimpan di `soal17_gojo_before.conf` dan `soal17_geto_before.conf`.
-
-**SS 17-07 — Output Script Soal 17**
-
-> **[TEMPAT SCREENSHOT 17-07]**: hasil kedua script.
 
 #### Urutan Menjalankan Script untuk Demonstrasi
 
@@ -4583,7 +4653,9 @@ curl -s -H "Host: jujutsu.k28.com" http://127.0.0.1/
 
 **SS 18-01 — API Kirara Aktif**
 
-> **[TEMPAT SCREENSHOT 18-01]**: output kedua perintah di Kirara.
+<img width="331" height="75" alt="image" src="https://github.com/user-attachments/assets/9822253e-320a-4081-b334-bb7fe115bd08" />
+<img width="632" height="202" alt="image" src="https://github.com/user-attachments/assets/71a6b061-fcf8-4b4e-9861-b0215e1afb0b" />
+Catatan laporan: “Worker API hanya menerima trafik dari Geto (allow 192.225.4.2), sehingga uji API Kirara dilakukan dari Geto, bukan dari localhost.”
 
 #### Langkah 2 — Mengubah Upstream di Geto
 
@@ -4609,7 +4681,8 @@ proxy_next_upstream error timeout http_502 http_503 http_504;
 
 **SS 18-02 — Upstream dengan Backup**
 
-> **[TEMPAT SCREENSHOT 18-02]**: `cat /etc/nginx/conf.d/api_cluster.conf`.
+<img width="645" height="435" alt="image" src="https://github.com/user-attachments/assets/99fead81-20b0-4cf9-b729-2fa944127d30" />
+
 
 #### Langkah 3 — Validasi dan Reload
 
@@ -4620,8 +4693,8 @@ nginx -t && nginx -s reload
 ```
 
 **SS 18-03 — Validasi Nginx**
+<img width="645" height="123" alt="image" src="https://github.com/user-attachments/assets/3aba162b-b0ac-465a-a997-336eec213b4e" />
 
-> **[TEMPAT SCREENSHOT 18-03]**: output `nginx -t`.
 
 #### Langkah 4 — Mensimulasikan Gangguan
 
@@ -4633,7 +4706,8 @@ service nginx stop
 
 **SS 18-04 — Nginx Worker Utama Dihentikan**
 
-> **[TEMPAT SCREENSHOT 18-04]**: `service nginx stop` dan `pgrep -a nginx` (kosong) di Nanami dan Todo.
+<img width="358" height="142" alt="image" src="https://github.com/user-attachments/assets/bdce14ba-f0b7-4e15-a8f7-ac8d8542439d" />
+
 
 #### Langkah 5 — Membuktikan Failover ke Kirara
 
@@ -4648,7 +4722,8 @@ curl -s http://jujutsu.k28.com/api
 
 **SS 18-05 — Failover Berhasil**
 
-> **[TEMPAT SCREENSHOT 18-05]**: output kode HTTP dan JSON dari Kirara.
+<img width="741" height="421" alt="image" src="https://github.com/user-attachments/assets/92e6eca7-ad47-4531-bd6d-37c3b46f9216" />
+
 
 #### Langkah 6 — Memulihkan Worker Utama
 
@@ -4662,7 +4737,8 @@ service nginx start
 
 **SS 18-06 — Worker Utama Pulih**
 
-> **[TEMPAT SCREENSHOT 18-06]**: `curl` dari Itadori setelah worker utama aktif lagi.
+<img width="750" height="158" alt="image" src="https://github.com/user-attachments/assets/d8656e2c-018f-4959-b214-a6e5e513d91a" />
+
 
 ### Catatan Pengujian Ulang
 
@@ -4681,11 +4757,50 @@ Geto berhasil memakai Kirara sebagai server backup dan menerapkan passive health
 Pada console Geto, buat `/root/soal18_geto.sh`, dan pada Kirara buat `/root/soal18_kirara.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal18_geto.sh
+#!/bin/bash
+set -e
+
+echo "=== Setup Soal 18: API Failover ==="
+
+# Simpan konfigurasi sebelumnya
+if [ -f /etc/nginx/sites-available/default ]; then
+    cp /etc/nginx/sites-available/default \
+       /root/soal18_geto_before.conf
+fi
+
+cat > /etc/nginx/sites-available/default <<'NGINX'
+upstream api_cluster {
+    server 192.225.4.5:80 weight=3 max_fails=2 fail_timeout=5s;
+    server 192.225.4.6:80 weight=1 max_fails=2 fail_timeout=5s;
+    server 192.225.4.7:80 backup;
+}
+
+server {
+    listen 80;
 ```
 
 ```bash
-# TEMPEL ISI: cat /root/soal18_kirara.sh
+#!/bin/bash
+set -e
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y nginx php-fpm php-mysql mariadb-client
+
+for svc in /etc/init.d/php*-fpm; do
+    [ -x "$svc" ] && service "$(basename "$svc")" start
+done
+
+PHP_SOCK="$(find /run/php -maxdepth 1 -name 'php*-fpm.sock' | head -n 1)"
+if [ -z "$PHP_SOCK" ]; then
+    echo "ERROR: socket PHP-FPM tidak ditemukan"
+    exit 1
+fi
+
+mkdir -p /var/www/html
+
+cat > /var/www/html/index.php <<'PHP'
+
 ```
 
 ```bash
@@ -4702,11 +4817,8 @@ bash /root/soal18_geto.sh      # di Geto
 
 **Fungsi:** menyiapkan API Kirara, lalu mengatur upstream backup dan health check di Geto. Backup konfigurasi ada di `soal18_geto_backup.conf` dan `soal18_geto_before.conf`.
 
-**SS 18-07 — Output Script Soal 18**
 
-> **[TEMPAT SCREENSHOT 18-07]**: hasil kedua script.
-
-#### Urutan Menjalankan Script untuk Demonstrasi
+#### Urutan Menjalankan Script 
 
 1. **Kirara:** `bash /root/soal18_kirara.sh`
 2. **Geto:** `bash /root/soal18_geto.sh`
@@ -4759,7 +4871,8 @@ limit_req_status 429;
 
 **SS 19-01 — Konfigurasi Cache dan Rate Limit**
 
-> **[TEMPAT SCREENSHOT 19-01]**: `cat /etc/nginx/conf.d/gojo.conf`.
+<img width="850" height="711" alt="image" src="https://github.com/user-attachments/assets/262307f9-8dfb-41c8-bf46-f88738cd098d" />
+
 
 #### Langkah 3 — Validasi dan Reload
 
@@ -4771,7 +4884,8 @@ nginx -t && nginx -s reload
 
 **SS 19-02 — Validasi Nginx**
 
-> **[TEMPAT SCREENSHOT 19-02]**: output `nginx -t`.
+<img width="692" height="155" alt="image" src="https://github.com/user-attachments/assets/df8b7df6-4a10-48b0-8d83-3e40633d215d" />
+
 
 #### Langkah 4 — Menguji Cache (MISS lalu HIT)
 
@@ -4786,7 +4900,7 @@ curl -sI http://jujutsu.k28.com/ | grep -i x-cache-status
 
 **SS 19-03 — Status MISS dan HIT**
 
-> **[TEMPAT SCREENSHOT 19-03]**: output kedua `curl`.
+<img width="735" height="152" alt="image" src="https://github.com/user-attachments/assets/2c8131ce-3b6d-4c06-a13a-55435ba71d7e" />
 
 #### Langkah 5 — Menguji Rate Limiting
 
@@ -4800,7 +4914,8 @@ for i in $(seq 1 30); do curl -s -o /dev/null -w "%{http_code}\n" http://jujutsu
 
 **SS 19-04 — Rate Limiting Aktif**
 
-> **[TEMPAT SCREENSHOT 19-04]**: output `sort | uniq -c`.
+<img width="722" height="148" alt="image" src="https://github.com/user-attachments/assets/b888de79-4a78-49d9-abf1-20d023550260" />
+
 
 ### Catatan Pengujian Ulang
 
@@ -4819,7 +4934,27 @@ Gojo berhasil menerapkan proxy cache 10 menit dengan `X-Cache-Status` yang menun
 Pada console Gojo, buat file `/root/soal19_gojo.sh`:
 
 ```bash
-# TEMPEL ISI: cat /root/soal19_gojo.sh
+#!/bin/bash
+set -e
+
+echo "=== Setup Soal 19: Cache dan Rate Limit ==="
+
+# Simpan konfigurasi aktif sebelum diubah
+cp /etc/nginx/sites-available/default \
+   /root/soal19_gojo_before.conf
+
+mkdir -p /var/cache/nginx/frontend_cache
+chown -R www-data:www-data /var/cache/nginx/frontend_cache
+
+# Pengaturan global: cache dan rate limit
+cat > /etc/nginx/conf.d/soal19_limits.conf <<'CONF'
+proxy_cache_path /var/cache/nginx/frontend_cache
+    levels=1:2
+    keys_zone=frontend_cache:10m
+    max_size=100m
+    inactive=30m
+    use_temp_path=off;
+
 ```
 
 ```bash
@@ -4834,11 +4969,8 @@ bash /root/soal19_gojo.sh
 
 **Fungsi:** menambahkan proxy cache dan rate limit, memvalidasi, dan me-reload Nginx. Konfigurasi sebelumnya dicadangkan di `soal16_gojo_backup_before19.conf` dan `soal19_gojo_before.conf`.
 
-**SS 19-05 — Output Script Soal 19**
 
-> **[TEMPAT SCREENSHOT 19-05]**: hasil `bash /root/soal19_gojo.sh`.
-
-#### Urutan Menjalankan Script untuk Demonstrasi
+#### Urutan Menjalankan Script 
 
 1. **Gojo:** `bash /root/soal19_gojo.sh`
 2. **Itadori:** `curl -sI` dua kali ke `/` (MISS lalu HIT).
@@ -4877,7 +5009,8 @@ ab -n 600 -c 30 http://jujutsu.k28.com/
 
 **SS 20-01 — Benchmark Halaman Web**
 
-> **[TEMPAT SCREENSHOT 20-01]**: output lengkap `ab` ke `/`.
+<img width="1113" height="1028" alt="image" src="https://github.com/user-attachments/assets/b0f0ded2-dc74-4866-a742-30934bd418b2" />
+
 
 #### Langkah 3 — Benchmark Endpoint `/api` (Rate Limit Aktif)
 
@@ -4891,7 +5024,7 @@ ab -n 600 -c 30 http://jujutsu.k28.com/api
 
 **SS 20-02 — Benchmark `/api` dengan Rate Limit**
 
-> **[TEMPAT SCREENSHOT 20-02]**: output lengkap `ab` ke `/api`.
+<img width="841" height="1077" alt="image" src="https://github.com/user-attachments/assets/0078cb3e-910a-43b8-81ba-e2b60e00d36b" />
 
 #### Langkah 4 — Pembanding Tanpa Rate Limit
 
@@ -4909,7 +5042,7 @@ Aktifkan kembali `limit_req` setelah pengujian.
 
 **SS 20-03 — Benchmark `/api` Tanpa Rate Limit**
 
-> **[TEMPAT SCREENSHOT 20-03]**: output `ab` ke `/api` tanpa rate limit.
+<img width="1083" height="1062" alt="image" src="https://github.com/user-attachments/assets/3d7a4404-54e2-495f-b6d1-08b6ee64430e" />
 
 #### Langkah 5 — Menganalisis Access Log Gojo
 
@@ -4930,7 +5063,7 @@ awk '{print $9}' /var/log/nginx/access.log | sort | uniq -c | sort -rn
 
 **SS 20-04 — Rekap Access Log**
 
-> **[TEMPAT SCREENSHOT 20-04]**: output `awk ... | uniq -c` di Gojo.
+<img width="738" height="196" alt="image" src="https://github.com/user-attachments/assets/ed02cee0-c520-4127-8308-d227f64b5137" />
 
 #### Langkah 6 — Tabel Perbandingan
 
@@ -4959,11 +5092,51 @@ Benchmark `-n 600 -c 30` menunjukkan kapasitas halaman web (dibantu cache) dan e
 Pada console Kusakabe, buat file `/root/soal20_kusakabe.sh` (dan `/root/soal20-benchmark.sh` jika dipakai terpisah):
 
 ```bash
-# TEMPEL ISI: cat /root/soal20_kusakabe.sh
+#!/bin/sh
+set -u
+
+DOMAIN="jujutsu.k28.com"
+GOJO_IP="192.225.1.4"
+LOG="/root/soal20_benchmark_$(date +%Y%m%d_%H%M%S).log"
+
+echo "=== Soal 20: Apache Benchmark ==="
+echo "Waktu mulai: $(date)"
+echo "Log: $LOG"
+
+# Instal Apache Benchmark pada Alpine jika belum tersedia
+if ! command -v ab >/dev/null 2>&1; then
+    echo "Apache Benchmark belum tersedia. Menggunakan apk..."
+    apk add --no-cache apache2-utils || {
+        echo "ERROR: Instalasi apache2-utils gagal."
+        echo "Periksa koneksi jaringan dan repository Alpine."
+        exit 1
+    }
+fi
+
 ```
 
 ```bash
-# TEMPEL ISI: cat /root/soal20-benchmark.sh
+#!/bin/bash
+
+DOMAIN="jujutsu.k28.com"
+BASE="http://${DOMAIN}"
+OUT="/root/soal20-hasil-$(date +%Y%m%d-%H%M%S)"
+
+mkdir -p "$OUT"
+
+# Pastikan Apache Benchmark tersedia
+if ! command -v ab >/dev/null 2>&1; then
+    echo "Apache Benchmark belum tersedia."
+    echo "Jalankan: apt-get update && apt-get install -y apache2-utils"
+    exit 1
+fi
+
+# Periksa target sebelum benchmark
+if ! getent hosts "$DOMAIN"; then
+    echo "Domain tidak bisa di-resolve. Benchmark dibatalkan."
+    exit 1
+fi
+
 ```
 
 ```bash
@@ -4979,11 +5152,7 @@ sh /root/soal20-benchmark.sh
 
 **Fungsi:** menjalankan `ab` ke `/` dan `/api`, lalu menyimpan hasil ke direktori `/root/soal20-hasil*` dan log `/root/soal20_benchmark_*.log`.
 
-**SS 20-05 — Output Script Soal 20**
-
-> **[TEMPAT SCREENSHOT 20-05]**: hasil script dan isi `ls /root/soal20-hasil`.
-
-#### Urutan Menjalankan Script untuk Demonstrasi
+#### Urutan Menjalankan Script 
 
 1. **Gojo:** pastikan `bash /root/soal19_gojo.sh` sudah aktif, lalu kosongkan access log.
 2. **Kusakabe:** `sh /root/soal20_kusakabe.sh`
